@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+chat-logs.json
+chat.db
+chat.db-shm
+chat.db-wal
+feedback.json
