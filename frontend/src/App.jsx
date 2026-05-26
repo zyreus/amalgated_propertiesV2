@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { BrowserRouter, Navigate, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, Outlet, Routes, Route, useNavigate } from 'react-router-dom';
 import Layout from './components/Layout.jsx';
 import SplashScreen from './components/SplashScreen.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
@@ -52,7 +52,7 @@ const AdminLogin = () => {
     fetch('/api/admin/verify', {
       headers: { Authorization: `Bearer ${token}` },
     }).then((res) => {
-      if (res.ok) navigate('/admin/chat', { replace: true });
+      if (res.ok) navigate('/admin/dashboard', { replace: true });
       else setChecking(false);
     }).catch(() => setChecking(false));
   }, [navigate]);
@@ -68,8 +68,10 @@ const AdminLogin = () => {
     );
   }
 
-  return <AdminLoginPage onLogin={() => navigate('/admin/chat', { replace: true })} />;
+  return <AdminLoginPage onLogin={() => navigate('/admin/dashboard', { replace: true })} />;
 };
+
+const AdminRoutes = () => <Outlet />;
 
 const AdminChatRoute = () => {
   const navigate = useNavigate();
@@ -77,19 +79,20 @@ const AdminChatRoute = () => {
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
-    if (!token) { navigate('/portal/login', { replace: true }); return; }
+    if (!token) { navigate('/admin', { replace: true }); return; }
     fetch('/api/admin/verify', {
       headers: { Authorization: `Bearer ${token}` },
     }).then((res) => {
       if (res.ok) setAuthed(true);
-      else navigate('/portal/login', { replace: true });
-    }).catch(() => navigate('/portal/login', { replace: true }));
+      else navigate('/admin', { replace: true });
+    }).catch(() => navigate('/admin', { replace: true }));
   }, [navigate]);
 
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_email');
-    navigate('/portal/login', { replace: true });
+    localStorage.removeItem('admin_username');
+    navigate('/admin', { replace: true });
   };
 
   if (!authed) {
@@ -132,21 +135,24 @@ const App = () => {
               <Route path="why-us" element={<WhyUsPage />} />
               <Route path="contact" element={<ContactPage />} />
             </Route>
-            <Route path="/client/login" element={<Navigate to="/portal/login" replace />} />
-            <Route path="/portal/login" element={<PortalLoginPage />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin/chat" element={<AdminChatRoute />} />
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard" element={<AdminDashboard />} />
-              <Route path="properties" element={<AdminProperties />} />
-              <Route path="news" element={<AdminNews />} />
-              <Route path="leases" element={<AdminLeases />} />
-              <Route path="maintenance" element={<AdminMaintenance />} />
-              <Route path="crm" element={<AdminCRM />} />
-              <Route path="analytics" element={<AdminAnalytics />} />
-              <Route path="users" element={<AdminUsers />} />
-              <Route path="settings" element={<AdminSettings />} />
+            <Route path="/client/login" element={<Navigate to="/portal" replace />} />
+            <Route path="/portal" element={<PortalLoginPage />} />
+            <Route path="/portal/login" element={<Navigate to="/portal" replace />} />
+            <Route path="/admin" element={<AdminRoutes />}>
+              <Route index element={<AdminLogin />} />
+              <Route path="login" element={<Navigate to="/admin" replace />} />
+              <Route path="chat" element={<AdminChatRoute />} />
+              <Route element={<AdminLayout />}>
+                <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="properties" element={<AdminProperties />} />
+                <Route path="news" element={<AdminNews />} />
+                <Route path="leases" element={<AdminLeases />} />
+                <Route path="maintenance" element={<AdminMaintenance />} />
+                <Route path="crm" element={<AdminCRM />} />
+                <Route path="analytics" element={<AdminAnalytics />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="settings" element={<AdminSettings />} />
+              </Route>
             </Route>
             <Route path="/client" element={<ClientLayout />}>
               <Route index element={<Navigate to="dashboard" replace />} />

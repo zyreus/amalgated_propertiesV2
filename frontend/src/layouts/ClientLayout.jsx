@@ -1,4 +1,4 @@
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -57,12 +57,18 @@ function Sidebar({ onNavigate }) {
 export default function ClientLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
-  const { logout } = useAuth('client');
+  const { logout, verify } = useAuth('client');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    verify('client').then((isClient) => {
+      if (!isClient) navigate('/portal', { replace: true });
+    });
+  }, [navigate, verify]);
 
   const handleLogout = () => {
     logout('client');
-    navigate('/portal/login', { replace: true });
+    navigate('/portal', { replace: true });
   };
 
   return (

@@ -85,20 +85,21 @@ export default function AdminLayout() {
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
     if (!token) {
-      navigate('/portal/login', { replace: true });
+      navigate('/admin', { replace: true });
       return;
     }
 
     fetch('/api/admin/verify', {
       headers: { Authorization: `Bearer ${token}` },
     }).then((res) => {
-      if (!res.ok) navigate('/portal/login', { replace: true });
-    }).catch(() => navigate('/portal/login', { replace: true }));
+      if (!res.ok) navigate('/admin', { replace: true });
+    }).catch(() => navigate('/admin', { replace: true }));
   }, [navigate]);
 
   const handleLogout = () => {
     logout('admin');
-    navigate('/portal/login', { replace: true });
+    localStorage.removeItem('admin_username');
+    navigate('/admin', { replace: true });
   };
 
   return (

@@ -1,43 +1,20 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Lock, Mail } from 'lucide-react';
+import { Building2, Lock, Mail, ShieldCheck } from 'lucide-react';
 import useAuth from '../hooks/useAuth.js';
 
 export default function PortalLoginPage() {
-  const [role, setRole] = useState('admin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
-  const auth = useAuth(role);
+  const auth = useAuth('client');
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setMessage('');
 
-    if (role === 'admin') {
-      try {
-        const username = email.includes('@') ? email.split('@')[0] : email;
-        const res = await fetch('/api/admin/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || 'Unable to sign in.');
-
-        localStorage.setItem('admin_token', data.token);
-        localStorage.setItem('admin_username', data.admin.username);
-        localStorage.setItem('admin_email', email);
-        navigate('/admin/dashboard', { replace: true });
-        return;
-      } catch (err) {
-        setMessage(err.message || 'Unable to sign in. Please check your credentials.');
-        return;
-      }
-    }
-
-    const result = await auth.login({ email, password, role });
+    const result = await auth.login({ email, password, role: 'client' });
     if (result.ok) {
       navigate('/client/dashboard', { replace: true });
       return;
@@ -75,24 +52,18 @@ export default function PortalLoginPage() {
             </div>
           </section>
 
-          <section className="p-6 sm:p-10">
+          <section className="flex items-center p-6 sm:p-10 lg:min-h-[620px]">
             <div className="mx-auto max-w-md">
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-accent">Portal Login</p>
-              <h2 className="mt-3 text-3xl font-bold text-brand-primary dark:text-white">Sign in to continue</h2>
-              <div className="mt-6 grid grid-cols-2 rounded-full bg-brand-50 p-1 dark:bg-brand-800/40">
-                {['admin', 'client'].map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setRole(item)}
-                    className={`rounded-full px-4 py-2 text-sm font-semibold capitalize transition ${role === item ? 'bg-brand-primary text-white shadow-brand-primary' : 'text-brand-primary dark:text-brand-accent'}`}
-                  >
-                    {item}
-                  </button>
-                ))}
+              <div className="inline-flex items-center gap-2 rounded-full bg-brand-primary/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-brand-primary dark:bg-brand-accent/10 dark:text-brand-accent">
+                <ShieldCheck className="h-4 w-4" />
+                Client Portal
               </div>
+              <h2 className="mt-5 text-3xl font-bold text-brand-primary dark:text-white">Sign in to your client workspace</h2>
+              <p className="mt-3 text-sm leading-6 text-brand-text-muted dark:text-slate-300">
+                Manage your leases, maintenance updates, documents, and support requests through a secure APMC client account.
+              </p>
 
-              <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+              <form onSubmit={handleSubmit} className="mt-8 space-y-5">
                 <label className="block">
                   <span className="mb-1.5 block text-sm font-medium text-brand-text dark:text-slate-300">Email</span>
                   <span className="relative block">
@@ -102,7 +73,7 @@ export default function PortalLoginPage() {
                       onChange={(event) => setEmail(event.target.value)}
                       type="email"
                       required
-                      placeholder={`${role}@apmc.test`}
+                      placeholder="client@apmc.test"
                       className="w-full rounded-xl border border-brand-200 bg-white px-4 py-3 pl-10 text-sm outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 dark:border-brand-700 dark:bg-brand-surface-dark dark:text-white"
                     />
                   </span>
@@ -122,13 +93,13 @@ export default function PortalLoginPage() {
                   </span>
                 </label>
                 {message && <p className="text-sm text-rose-600">{message}</p>}
-                {role !== 'admin' && auth.error && (
+                {auth.error && (
                   <p className="rounded-xl bg-brand-50 px-4 py-3 text-xs text-brand-text-muted dark:bg-brand-800/40 dark:text-slate-300">
                     API login unavailable, using mock portal session for preview.
                   </p>
                 )}
-                <button disabled={auth.loading} className="btn-primary w-full disabled:opacity-60" type="submit">
-                  {auth.loading ? 'Signing in...' : `Sign in as ${role}`}
+                <button disabled={auth.loading} className="btn-primary mt-2 w-full disabled:opacity-60" type="submit">
+                  {auth.loading ? 'Signing in...' : 'Sign in to your client workspace'}
                 </button>
               </form>
             </div>

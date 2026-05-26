@@ -17,7 +17,7 @@ function buildLiveKpis(stats) {
 export default function ClientDashboard() {
   const [token] = useState(() => {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('client_token') || localStorage.getItem('admin_token');
+    return localStorage.getItem('client_token');
   });
   const api = useApi(token);
   const [kpis, setKpis] = useState(clientKpis);

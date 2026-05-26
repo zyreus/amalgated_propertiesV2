@@ -45,6 +45,11 @@ export function useAuth(initialRole = 'admin') {
       setSession({ token, email });
       return { ok: true, token };
     } catch (err) {
+      if (err.status && err.status < 500) {
+        setError(err.message);
+        return { ok: false, error: err.message };
+      }
+
       const mockToken = `mock-${nextRole}-${Date.now()}`;
       localStorage.setItem(tokenKeyFor(nextRole), mockToken);
       localStorage.setItem(emailKeyFor(nextRole), email);

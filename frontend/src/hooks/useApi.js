@@ -60,7 +60,9 @@ export async function apiRequest(path, { token, headers, cacheTtlMs = 0, cacheKe
   const data = text ? JSON.parse(text) : null;
 
   if (!response.ok) {
-    throw new Error(data?.message || `API request failed with status ${response.status}`);
+    const error = new Error(data?.message || `API request failed with status ${response.status}`);
+    error.status = response.status;
+    throw error;
   }
 
   if (shouldCache) {

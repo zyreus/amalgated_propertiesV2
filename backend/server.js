@@ -182,25 +182,33 @@ app.post('/api/feedback', (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/api/admin/feedback', (req, res) => {
+function verifyAdminTokenFromRequest(req) {
   const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ ok: false });
+  if (!auth?.startsWith('Bearer ')) return null;
+
   try {
-    jwt.verify(auth.split(' ')[1], JWT_SECRET);
+    const decoded = jwt.verify(auth.split(' ')[1], JWT_SECRET);
+    return decoded?.role === 'admin' ? decoded : null;
   } catch {
+    return null;
+  }
+}
+
+app.get('/api/admin/feedback', (req, res) => {
+  const admin = verifyAdminTokenFromRequest(req);
+  if (!admin) {
     return res.status(401).json({ ok: false });
   }
+
   res.json(readFeedback().reverse());
 });
 
 app.delete('/api/admin/feedback/:id', (req, res) => {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ ok: false });
-  try {
-    jwt.verify(auth.split(' ')[1], JWT_SECRET);
-  } catch {
+  const admin = verifyAdminTokenFromRequest(req);
+  if (!admin) {
     return res.status(401).json({ ok: false });
   }
+
   const feedback = readFeedback().filter((f) => f.id !== req.params.id);
   writeFeedback(feedback);
   res.json({ ok: true });
@@ -254,15 +262,19 @@ app.post('/api/admin/bulk', requireAdmin, (req, res) => {
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-change-me';
 
 app.post('/api/admin/login', rateLimit({ windowMs: 60_000, max: 10 }), async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ ok: false, message: 'Username and password are required.' });
+  const { username, email, password, remember } = req.body;
+  const login = username || email;
+  if (!login || !password) {
+    return res.status(400).json({ ok: false, message: 'Admin email and password are required.' });
   }
 
   const adminUsername = process.env.ADMIN_USERNAME;
   const adminHash = process.env.ADMIN_PASSWORD_HASH;
+  const normalizedLogin = String(login).trim().toLowerCase();
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const normalizedAdmin = String(adminUsername || '').trim().toLowerCase();
 
-  if (username !== adminUsername) {
+  if (!adminUsername || !adminHash || (normalizedLogin !== normalizedAdmin && normalizedEmail !== normalizedAdmin)) {
     return res.status(401).json({ ok: false, message: 'Invalid credentials.' });
   }
 
@@ -271,37 +283,44 @@ app.post('/api/admin/login', rateLimit({ windowMs: 60_000, max: 10 }), async (re
     return res.status(401).json({ ok: false, message: 'Invalid credentials.' });
   }
 
-  const token = jwt.sign({ username, role: 'admin' }, JWT_SECRET, { expiresIn: '24h' });
-  res.json({ ok: true, token, admin: { username } });
+  const token = jwt.sign(
+    {
+      username: adminUsername,
+      email: normalizedEmail || null,
+      role: 'admin',
+      guard: 'admin',
+    },
+    JWT_SECRET,
+    { expiresIn: remember ? '7d' : '8h' }
+  );
+  res.json({ ok: true, token, admin: { username: adminUsername, email: normalizedEmail || null } });
 });
 
 app.get('/api/admin/verify', (req, res) => {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ ok: false });
-  try {
-    const decoded = jwt.verify(auth.split(' ')[1], JWT_SECRET);
-    res.json({ ok: true, admin: { username: decoded.username } });
-  } catch {
-    res.status(401).json({ ok: false });
+  const decoded = verifyAdminTokenFromRequest(req);
+  if (!decoded) {
+    return res.status(401).json({ ok: false });
   }
+
+  res.json({ ok: true, admin: { username: decoded.username, email: decoded.email || null } });
 });
 
 function requireAdmin(req, res, next) {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ ok: false, message: 'Unauthorized' });
-  try {
-    req.admin = jwt.verify(auth.split(' ')[1], JWT_SECRET);
-    next();
-  } catch {
-    res.status(401).json({ ok: false, message: 'Token expired or invalid' });
+  const admin = verifyAdminTokenFromRequest(req);
+  if (!admin) {
+    return res.status(401).json({ ok: false, message: 'Unauthorized' });
   }
+
+  req.admin = admin;
+  return next();
 }
 
 function verifySocketAdmin(socket) {
   const token = socket.handshake?.auth?.token;
   if (!token) return null;
   try {
-    return jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
+    return decoded?.role === 'admin' ? decoded : null;
   } catch {
     return null;
   }

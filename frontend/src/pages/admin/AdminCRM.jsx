@@ -10,7 +10,7 @@ export default function AdminCRM() {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_email');
     localStorage.removeItem('admin_username');
-    navigate('/portal/login', { replace: true });
+    navigate('/admin', { replace: true });
   };
 
   return (

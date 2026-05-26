@@ -17,8 +17,7 @@ const footerLinks = {
     { label: 'Contact', to: '/contact' },
   ],
   Access: [
-    { label: 'Client Portal', to: '/portal/login' },
-    { label: 'Admin', to: '/admin/login' },
+    { label: 'Client Portal', to: '/portal' },
   ],
 };
 

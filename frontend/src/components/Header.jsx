@@ -43,7 +43,7 @@ const Header = () => {
               {link.label}
             </Link>
           ))}
-          <Link to="/portal/login" className="nav-link">
+          <Link to="/portal" className="nav-link">
             Client Portal
           </Link>
           <Link
@@ -80,7 +80,7 @@ const Header = () => {
               {link.label}
             </Link>
           ))}
-          <Link to="/portal/login" className="block rounded-lg px-3 py-2.5 text-brand-text hover:bg-brand-primary/10 hover:text-brand-primary" onClick={closeMobileMenu}>
+          <Link to="/portal" className="block rounded-lg px-3 py-2.5 text-brand-text hover:bg-brand-primary/10 hover:text-brand-primary" onClick={closeMobileMenu}>
             Client Portal
           </Link>
           <Link to="/contact" className="mt-3 block rounded-xl bg-brand-primary px-4 py-3 text-center text-sm font-semibold text-white" onClick={closeMobileMenu}>
