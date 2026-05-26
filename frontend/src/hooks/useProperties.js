@@ -22,8 +22,12 @@ export function mapApiProperty(row) {
       ? row.status.charAt(0).toUpperCase() + row.status.slice(1)
       : 'Available',
     beds: row.bedrooms ?? 0,
+    bathrooms: row.bathrooms ?? 0,
+    parking_slots: row.parking_slots ?? 0,
+    parking: row.parking_slots ? `${row.parking_slots} slots` : 'Available',
     sqft: row.area_sqm ? String(Math.round(row.area_sqm)) : '—',
     image: primaryImage?.url || row.image || DEFAULT_IMAGE,
+    gallery: row.images?.map?.((image) => image.url).filter(Boolean) || [],
     description: row.description || '',
     featured: Boolean(row.featured),
     amenities: typeof row.amenities === 'string' ? JSON.parse(row.amenities || '[]') : row.amenities || [],

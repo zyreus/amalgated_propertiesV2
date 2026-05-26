@@ -13,6 +13,8 @@ import CareersPage from './pages/CareersPage.jsx';
 import PropertyDetailPage from './pages/PropertyDetailPage.jsx';
 import WhyUsPage from './pages/WhyUsPage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
+import LeadershipPage from './pages/LeadershipPage.jsx';
+import InvestorRelationsPage from './pages/InvestorRelationsPage.jsx';
 import AdminChatPage from './pages/AdminChatPage.jsx';
 import AdminLoginPage from './pages/AdminLoginPage.jsx';
 import PortalLoginPage from './pages/PortalLoginPage.jsx';
@@ -20,8 +22,8 @@ import AdminLayout from './layouts/AdminLayout.jsx';
 import ClientLayout from './layouts/ClientLayout.jsx';
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard.jsx'));
 const AdminProperties = lazy(() => import('./pages/admin/AdminProperties.jsx'));
+const AdminNews = lazy(() => import('./pages/admin/AdminNews.jsx'));
 const AdminLeases = lazy(() => import('./pages/admin/AdminLeases.jsx'));
-const AdminPayments = lazy(() => import('./pages/admin/AdminPayments.jsx'));
 const AdminMaintenance = lazy(() => import('./pages/admin/AdminMaintenance.jsx'));
 const AdminCRM = lazy(() => import('./pages/admin/AdminCRM.jsx'));
 const AdminAnalytics = lazy(() => import('./pages/admin/AdminAnalytics.jsx'));
@@ -119,11 +121,13 @@ const App = () => {
               <Route index element={<HomePage />} />
               <Route path="about" element={<AboutPage />} />
               <Route path="company" element={<AboutPage />} />
+              <Route path="leadership" element={<LeadershipPage />} />
               <Route path="services" element={<ServicesPage />} />
               <Route path="properties" element={<PropertiesPage />} />
               <Route path="properties/:slug" element={<PropertyDetailPage />} />
               <Route path="projects" element={<ProjectsPage />} />
               <Route path="news" element={<NewsPage />} />
+              <Route path="investors" element={<InvestorRelationsPage />} />
               <Route path="careers" element={<CareersPage />} />
               <Route path="why-us" element={<WhyUsPage />} />
               <Route path="contact" element={<ContactPage />} />
@@ -136,8 +140,8 @@ const App = () => {
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="properties" element={<AdminProperties />} />
+              <Route path="news" element={<AdminNews />} />
               <Route path="leases" element={<AdminLeases />} />
-              <Route path="payments" element={<AdminPayments />} />
               <Route path="maintenance" element={<AdminMaintenance />} />
               <Route path="crm" element={<AdminCRM />} />
               <Route path="analytics" element={<AdminAnalytics />} />

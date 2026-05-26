@@ -11,6 +11,11 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
+router.get('/public', (_req, res) => {
+  const announcements = listAnnouncements({ status: 'published', audience: 'all' });
+  return res.json(announcements);
+});
+
 router.use(requireAuth);
 
 router.get('/', (req, res) => {

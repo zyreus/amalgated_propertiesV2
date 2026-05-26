@@ -227,6 +227,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS announcements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
+    excerpt TEXT,
+    category TEXT DEFAULT 'Company Update',
     body TEXT NOT NULL,
     audience TEXT DEFAULT 'all' CHECK(audience IN ('all','admin','client')),
     status TEXT DEFAULT 'published' CHECK(status IN ('draft','published','archived')),
@@ -264,6 +266,14 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_activity_logs_user ON activity_logs(user_id);
   CREATE INDEX IF NOT EXISTS idx_activity_logs_entity ON activity_logs(entity_type, entity_id);
 `);
+
+try {
+  db.prepare("ALTER TABLE announcements ADD COLUMN excerpt TEXT").run();
+} catch {}
+
+try {
+  db.prepare("ALTER TABLE announcements ADD COLUMN category TEXT DEFAULT 'Company Update'").run();
+} catch {}
 
 const seedRole = db.prepare('INSERT OR IGNORE INTO roles (name, description) VALUES (?, ?)');
 seedRole.run('admin', 'Property management administrator');
@@ -405,18 +415,61 @@ export function listProperties(filter = {}) {
   let sql = 'SELECT * FROM properties';
   const values = [];
   const clauses = [];
-  ['status', 'type', 'city', 'featured'].forEach((key) => {
+  ['status', 'type', 'city', 'province', 'featured'].forEach((key) => {
     if (filter[key] !== undefined && filter[key] !== '') {
       clauses.push(`${key} = ?`);
       values.push(filter[key]);
     }
   });
+  if (filter.category && filter.category !== 'All') {
+    clauses.push('type = ?');
+    values.push(String(filter.category).toLowerCase());
+  }
+  if (filter.region && filter.region !== 'All') {
+    clauses.push('province = ?');
+    values.push(filter.region);
+  }
+  if (filter.min_price) {
+    clauses.push('price >= ?');
+    values.push(Number(filter.min_price));
+  }
+  if (filter.max_price) {
+    clauses.push('price <= ?');
+    values.push(Number(filter.max_price));
+  }
+  if (filter.min_sqm) {
+    clauses.push('area_sqm >= ?');
+    values.push(Number(filter.min_sqm));
+  }
+  if (filter.max_sqm) {
+    clauses.push('area_sqm <= ?');
+    values.push(Number(filter.max_sqm));
+  }
+  if (filter.bedrooms) {
+    clauses.push('bedrooms >= ?');
+    values.push(Number(filter.bedrooms));
+  }
+  if (filter.bathrooms) {
+    clauses.push('bathrooms >= ?');
+    values.push(Number(filter.bathrooms));
+  }
   if (filter.search) {
-    clauses.push('(name LIKE ? OR address LIKE ? OR description LIKE ?)');
-    values.push(`%${filter.search}%`, `%${filter.search}%`, `%${filter.search}%`);
+    clauses.push('(name LIKE ? OR address LIKE ? OR city LIKE ? OR province LIKE ? OR description LIKE ?)');
+    values.push(`%${filter.search}%`, `%${filter.search}%`, `%${filter.search}%`, `%${filter.search}%`, `%${filter.search}%`);
   }
   if (clauses.length) sql += ` WHERE ${clauses.join(' AND ')}`;
-  return db.prepare(`${sql} ORDER BY featured DESC, created_at DESC`).all(...values);
+  const sort = {
+    area: 'area_sqm DESC',
+    price_asc: 'price ASC',
+    price_desc: 'price DESC',
+    name: 'name ASC',
+    newest: 'created_at DESC',
+  }[filter.sort] || 'featured DESC, created_at DESC';
+  const properties = db.prepare(`${sql} ORDER BY ${sort}`).all(...values);
+  return properties.map((property) => ({
+    ...property,
+    images: db.prepare('SELECT * FROM property_images WHERE property_id = ? ORDER BY sort_order ASC, id ASC').all(property.id),
+  }));
 }
 
 export function getPropertyById(id) {
@@ -434,7 +487,7 @@ export function getPropertyBySlug(slug) {
 }
 
 export function createProperty(data) {
-  return insert('properties', {
+  const property = insert('properties', {
     slug: data.slug || slugify(data.name),
     name: data.name,
     type: data.type,
@@ -451,15 +504,47 @@ export function createProperty(data) {
     amenities: asJson(data.amenities),
     featured: data.featured ? 1 : 0,
   });
+
+  const imageUrl = data.image_url || data.image;
+  if (imageUrl) {
+    insert('property_images', {
+      property_id: property.id,
+      url: imageUrl,
+      alt: data.image_alt || property.name,
+      sort_order: 0,
+      is_primary: 1,
+    });
+  }
+
+  return getPropertyBySlug(property.slug);
 }
 
 export function updateProperty(id, data) {
-  return updateById('properties', id, {
-    ...data,
+  const { image_url, image, image_alt, ...propertyData } = data;
+  const property = updateById('properties', id, {
+    ...propertyData,
     slug: data.slug ?? (data.name ? slugify(data.name) : undefined),
     amenities: data.amenities !== undefined ? asJson(data.amenities) : undefined,
     featured: data.featured !== undefined ? (data.featured ? 1 : 0) : undefined,
   });
+
+  const imageUrl = image_url || image;
+  if (property && imageUrl) {
+    const existing = db.prepare('SELECT id FROM property_images WHERE property_id = ? AND is_primary = 1 ORDER BY sort_order ASC, id ASC').get(id);
+    if (existing) {
+      db.prepare('UPDATE property_images SET url = ?, alt = ? WHERE id = ?').run(imageUrl, image_alt || property.name, existing.id);
+    } else {
+      insert('property_images', {
+        property_id: id,
+        url: imageUrl,
+        alt: image_alt || property.name,
+        sort_order: 0,
+        is_primary: 1,
+      });
+    }
+  }
+
+  return property ? getPropertyBySlug(property.slug) : null;
 }
 
 export function deleteProperty(id) {
@@ -516,8 +601,26 @@ export function createLease(data) {
 }
 
 export function listLeases(filter = {}) {
-  const { sql, values } = buildFilters('SELECT * FROM leases', filter, ['property_id', 'unit_id', 'tenant_id', 'user_id', 'status']);
-  return db.prepare(`${sql} ORDER BY created_at DESC`).all(...values);
+  let sql = `
+    SELECT leases.*,
+           properties.name AS property_name,
+           tenants.name AS tenant_name,
+           users.name AS user_name
+    FROM leases
+    LEFT JOIN properties ON properties.id = leases.property_id
+    LEFT JOIN tenants ON tenants.id = leases.tenant_id
+    LEFT JOIN users ON users.id = leases.user_id
+  `;
+  const values = [];
+  const clauses = [];
+  ['property_id', 'unit_id', 'tenant_id', 'user_id', 'status'].forEach((key) => {
+    if (filter[key] !== undefined && filter[key] !== '') {
+      clauses.push(`leases.${key} = ?`);
+      values.push(filter[key]);
+    }
+  });
+  if (clauses.length) sql += ` WHERE ${clauses.join(' AND ')}`;
+  return db.prepare(`${sql} ORDER BY leases.created_at DESC`).all(...values);
 }
 
 export function getLeaseById(id) {
@@ -599,6 +702,8 @@ export function deleteMaintenanceRequest(id) {
 export function createAnnouncement(data) {
   return insert('announcements', {
     title: data.title,
+    excerpt: data.excerpt ?? null,
+    category: data.category ?? 'Company Update',
     body: data.body,
     audience: data.audience ?? 'all',
     status: data.status ?? 'published',
@@ -730,6 +835,38 @@ export function seedProperties() {
   return { inserted: properties.length, skipped: false };
 }
 
+export function seedAnnouncements() {
+  const existing = db.prepare('SELECT COUNT(*) AS count FROM announcements').get().count;
+  if (existing > 0) return { inserted: 0, skipped: true };
+
+  const announcements = [
+    {
+      title: 'APMC Expands Portfolio Visibility Across Key Regional Markets',
+      category: 'Company Update',
+      excerpt: 'The group continues to organize its real estate portfolio around better leasing access and stronger tenant support.',
+      body: 'The group continues to organize its real estate portfolio around better leasing access and stronger tenant support.',
+      published_at: '2026-05-01T00:00:00.000Z',
+    },
+    {
+      title: 'Why Strategic Property Management Matters for Growing Tenants',
+      category: 'Insight',
+      excerpt: 'Reliable property management helps businesses reduce downtime, plan occupancy, and protect long-term value.',
+      body: 'Reliable property management helps businesses reduce downtime, plan occupancy, and protect long-term value.',
+      published_at: '2026-04-01T00:00:00.000Z',
+    },
+    {
+      title: 'Commercial Leasing Demand Remains Active in Provincial Hubs',
+      category: 'Market Notes',
+      excerpt: 'Banks, service firms, and retail operators continue to seek dependable spaces in high-connectivity locations.',
+      body: 'Banks, service firms, and retail operators continue to seek dependable spaces in high-connectivity locations.',
+      published_at: '2026-03-01T00:00:00.000Z',
+    },
+  ];
+
+  announcements.forEach((announcement) => createAnnouncement(announcement));
+  return { inserted: announcements.length, skipped: false };
+}
+
 export function seedDefaultUsers() {
   const existing = db.prepare('SELECT COUNT(*) AS count FROM users').get().count;
   if (existing > 0 || !adminRole || !clientRole) return { inserted: 0, skipped: true };
@@ -753,6 +890,7 @@ export function seedDefaultUsers() {
 }
 
 seedProperties();
+seedAnnouncements();
 seedDefaultUsers();
 
 export default db;

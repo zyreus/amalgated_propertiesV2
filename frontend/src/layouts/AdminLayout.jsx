@@ -1,14 +1,14 @@
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   BarChart3,
   Bell,
   Building2,
-  CreditCard,
   LayoutDashboard,
   Menu,
   MessageSquare,
   Moon,
+  Newspaper,
   Search,
   Settings,
   Sun,
@@ -23,8 +23,8 @@ import useAuth from '../hooks/useAuth.js';
 const navItems = [
   { label: 'Dashboard', to: '/admin/dashboard', icon: LayoutDashboard },
   { label: 'Properties', to: '/admin/properties', icon: Building2 },
+  { label: 'News', to: '/admin/news', icon: Newspaper },
   { label: 'Leases', to: '/admin/leases', icon: FileText },
-  { label: 'Payments', to: '/admin/payments', icon: CreditCard },
   { label: 'Maintenance', to: '/admin/maintenance', icon: Wrench },
   { label: 'CRM & Chat', to: '/admin/crm', icon: MessageSquare },
   { label: 'Analytics', to: '/admin/analytics', icon: BarChart3 },
@@ -32,12 +32,24 @@ const navItems = [
   { label: 'Settings', to: '/admin/settings', icon: Settings },
 ];
 
-function Sidebar({ onNavigate }) {
+function Sidebar({ collapsed = false, menuLabel = 'Toggle navigation', onNavigate, onToggle }) {
   return (
     <aside className="flex h-full flex-col border-r border-brand-100/80 bg-white/90 px-4 py-5 backdrop-blur-xl dark:border-brand-700/50 dark:bg-brand-surface-dark/95">
-      <div className="px-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-accent">APMC</p>
-        <h1 className="mt-1 text-xl font-bold text-brand-primary dark:text-white">Admin Portal</h1>
+      <div className={`flex items-start ${collapsed ? 'justify-center' : 'justify-between px-3'}`}>
+        {!collapsed && (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-accent">APMC</p>
+            <h1 className="mt-1 text-xl font-bold text-brand-primary dark:text-white">Admin Portal</h1>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={onToggle}
+          className="rounded-full p-2 text-brand-primary transition hover:bg-brand-50 dark:text-brand-accent dark:hover:bg-brand-800/50"
+          aria-label={menuLabel}
+        >
+          <Menu className="h-5 w-5" />
+        </button>
       </div>
       <nav className="mt-8 space-y-1">
         {navItems.map(({ label, to, icon: Icon }) => (
@@ -45,26 +57,44 @@ function Sidebar({ onNavigate }) {
             key={to}
             to={to}
             onClick={onNavigate}
-            className={({ isActive }) => `dashboard-sidebar-link ${isActive ? 'active' : ''}`}
+            className={({ isActive }) => `dashboard-sidebar-link ${collapsed ? 'justify-center px-3' : ''} ${isActive ? 'active' : ''}`}
+            title={collapsed ? label : undefined}
           >
             <Icon className="h-4 w-4" />
-            {label}
+            {!collapsed && label}
           </NavLink>
         ))}
       </nav>
-      <div className="mt-auto rounded-2xl bg-brand-primary p-4 text-white shadow-brand-primary">
-        <p className="text-sm font-semibold">Portfolio Health</p>
-        <p className="mt-1 text-xs text-white/75">94.2% occupied across managed assets.</p>
-      </div>
+      {!collapsed && (
+        <div className="mt-auto rounded-2xl bg-brand-primary p-4 text-white shadow-brand-primary">
+          <p className="text-sm font-semibold">Portfolio Health</p>
+          <p className="mt-1 text-xs text-white/75">94.2% occupied across managed assets.</p>
+        </div>
+      )}
     </aside>
   );
 }
 
 export default function AdminLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const { logout } = useAuth('admin');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem('admin_token');
+    if (!token) {
+      navigate('/portal/login', { replace: true });
+      return;
+    }
+
+    fetch('/api/admin/verify', {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((res) => {
+      if (!res.ok) navigate('/portal/login', { replace: true });
+    }).catch(() => navigate('/portal/login', { replace: true }));
+  }, [navigate]);
 
   const handleLogout = () => {
     logout('admin');
@@ -73,8 +103,11 @@ export default function AdminLayout() {
 
   return (
     <div className="min-h-screen bg-brand-background-alt text-brand-text dark:bg-brand-dark dark:text-slate-100">
-      <div className="fixed inset-y-0 left-0 z-30 hidden w-72 lg:block">
-        <Sidebar />
+      <div className={`fixed inset-y-0 left-0 z-30 hidden transition-[width] duration-200 lg:block ${sidebarCollapsed ? 'w-20' : 'w-72'}`}>
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed((current) => !current)}
+        />
       </div>
 
       {drawerOpen && (
@@ -88,14 +121,18 @@ export default function AdminLayout() {
             >
               <X className="h-4 w-4" />
             </button>
-            <Sidebar onNavigate={() => setDrawerOpen(false)} />
+            <Sidebar
+              menuLabel="Close navigation"
+              onNavigate={() => setDrawerOpen(false)}
+              onToggle={() => setDrawerOpen(false)}
+            />
           </div>
         </div>
       )}
 
-      <div className="lg:pl-72">
+      <div className={`transition-[padding] duration-200 ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'}`}>
         <header className="sticky top-0 z-20 border-b border-brand-100/80 bg-white/80 px-4 py-3 backdrop-blur-xl dark:border-brand-700/50 dark:bg-brand-dark/85 sm:px-6">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-end gap-3">
             <button
               onClick={() => setDrawerOpen(true)}
               className="rounded-full p-2 text-brand-primary hover:bg-brand-50 dark:text-brand-accent dark:hover:bg-brand-800/50 lg:hidden"
@@ -103,11 +140,11 @@ export default function AdminLayout() {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="relative max-w-xl flex-1">
+            <div className="relative w-full max-w-xl flex-none">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-text-muted" />
               <input
                 type="search"
-                placeholder="Search properties, tenants, invoices..."
+                placeholder="Search properties, tenants, requests..."
                 className="w-full rounded-full border border-brand-100 bg-white py-2 pl-10 pr-4 text-sm outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15 dark:border-brand-700 dark:bg-brand-surface-dark"
               />
             </div>

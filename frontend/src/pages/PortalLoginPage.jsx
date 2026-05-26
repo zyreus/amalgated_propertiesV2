@@ -13,9 +13,33 @@ export default function PortalLoginPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setMessage('');
+
+    if (role === 'admin') {
+      try {
+        const username = email.includes('@') ? email.split('@')[0] : email;
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Unable to sign in.');
+
+        localStorage.setItem('admin_token', data.token);
+        localStorage.setItem('admin_username', data.admin.username);
+        localStorage.setItem('admin_email', email);
+        navigate('/admin/dashboard', { replace: true });
+        return;
+      } catch (err) {
+        setMessage(err.message || 'Unable to sign in. Please check your credentials.');
+        return;
+      }
+    }
+
     const result = await auth.login({ email, password, role });
     if (result.ok) {
-      navigate(role === 'admin' ? '/admin/dashboard' : '/client/dashboard', { replace: true });
+      navigate('/client/dashboard', { replace: true });
       return;
     }
     setMessage('Unable to sign in. Please check your credentials.');
@@ -98,7 +122,7 @@ export default function PortalLoginPage() {
                   </span>
                 </label>
                 {message && <p className="text-sm text-rose-600">{message}</p>}
-                {auth.error && (
+                {role !== 'admin' && auth.error && (
                   <p className="rounded-xl bg-brand-50 px-4 py-3 text-xs text-brand-text-muted dark:bg-brand-800/40 dark:text-slate-300">
                     API login unavailable, using mock portal session for preview.
                   </p>

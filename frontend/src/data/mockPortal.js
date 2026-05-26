@@ -1,7 +1,5 @@
 export const adminKpis = [
   { label: 'Portfolio Value', value: 'PHP 2.4B', change: '+8.4%', trend: 'up' },
-  { label: 'Occupancy Rate', value: '94.2%', change: '+2.1%', trend: 'up' },
-  { label: 'Monthly Revenue', value: 'PHP 18.7M', change: '+12.6%', trend: 'up' },
   { label: 'Open Requests', value: '37', change: '-6.5%', trend: 'down' },
 ];
 
@@ -21,16 +19,9 @@ export const propertyMix = [
   { type: 'Retail', units: 26 },
 ];
 
-export const recentTransactions = [
-  { id: 'TRX-1048', tenant: 'Northpoint Foods Inc.', property: 'APMC Corporate Center', amount: 'PHP 1,280,000', status: 'Paid', date: 'May 18, 2026' },
-  { id: 'TRX-1047', tenant: 'Cebu Creative Labs', property: 'Mactan Business Park', amount: 'PHP 420,000', status: 'Pending', date: 'May 17, 2026' },
-  { id: 'TRX-1046', tenant: 'Santos Family', property: 'The Meridian Suites', amount: 'PHP 86,000', status: 'Paid', date: 'May 16, 2026' },
-  { id: 'TRX-1045', tenant: 'Harbor Logistics', property: 'South Hub Warehouses', amount: 'PHP 735,000', status: 'Overdue', date: 'May 15, 2026' },
-];
-
 export const activityFeed = [
   { title: 'Lease renewal approved', detail: 'Cebu Creative Labs renewed for 24 months.', time: '12 min ago' },
-  { title: 'Payment posted', detail: 'Northpoint Foods Inc. payment reconciled.', time: '42 min ago' },
+  { title: 'Portfolio note added', detail: 'Northpoint Foods Inc. account review was updated.', time: '42 min ago' },
   { title: 'Maintenance escalated', detail: 'Elevator service request moved to urgent.', time: '2 hrs ago' },
   { title: 'New lead captured', detail: 'Visitor requested a warehouse viewing.', time: '4 hrs ago' },
 ];
@@ -47,7 +38,6 @@ export const adminTables = {
     { tenant: 'Cebu Creative Labs', property: 'Mactan Business Park', term: '24 months', renewal: 'May 2028', value: 'PHP 10.1M', status: 'Renewed' },
     { tenant: 'Harbor Logistics', property: 'South Hub Warehouses', term: '48 months', renewal: 'Jan 2027', value: 'PHP 35M', status: 'Review' },
   ],
-  payments: recentTransactions,
   maintenance: [
     { ticket: 'MNT-2201', property: 'APMC Corporate Center', issue: 'Elevator inspection', priority: 'High', assignee: 'Facilities Team', status: 'In Progress' },
     { ticket: 'MNT-2200', property: 'The Meridian Suites', issue: 'Water pressure check', priority: 'Medium', assignee: 'Plumbing Vendor', status: 'Scheduled' },
@@ -71,7 +61,7 @@ export const adminTables = {
   ],
   settings: [
     { setting: 'Brand Theme', value: 'Corporate Blue', area: 'Appearance', status: 'Enabled' },
-    { setting: 'Payment Reminders', value: '7 days before due', area: 'Billing', status: 'Enabled' },
+    { setting: 'Lease Reminders', value: '30 days before renewal', area: 'Leasing', status: 'Enabled' },
     { setting: 'Maintenance SLA', value: '24 hour response', area: 'Operations', status: 'Enabled' },
   ],
 };

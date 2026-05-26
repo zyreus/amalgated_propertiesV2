@@ -63,8 +63,13 @@ const ChatWidget = () => {
   const convoId = useRef(getConvoId());
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+  const openRef = useRef(open);
 
   const getSourcePage = () => typeof window !== 'undefined' ? (window.location.pathname || window.location.href || '/') : '/';
+
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
 
   useEffect(() => {
     const socket = io({ autoConnect: false });
@@ -80,7 +85,7 @@ const ChatWidget = () => {
     socket.on('chat:message', (msg) => {
       setMessages((prev) => [...prev, { ...msg, time: msg.created_at }]);
       setTyping(false);
-      if (!open && msg.sender !== 'user') {
+      if (!openRef.current && msg.sender !== 'user') {
         setUnread((n) => n + 1);
       }
     });
@@ -133,24 +138,39 @@ const ChatWidget = () => {
     socketRef.current?.emit('visitor:join', { conversationId: newId, source_page: getSourcePage() });
   }, []);
 
+  const sendVisitorMessage = useCallback((text) => {
+    const content = text.trim();
+    if (!content) return;
+    socketRef.current?.emit('visitor:message', {
+      conversationId: convoId.current,
+      content,
+      source_page: getSourcePage(),
+    });
+    setMode('chat');
+  }, []);
+
   const handleQuickOption = useCallback((opt) => {
-    addLocal('user', opt.label);
     if (opt.id === 'agent') {
+      addLocal('user', opt.label);
       addLocal('ai', 'Would you like to connect with a live customer service representative?');
       setMode('agent');
       setAgentStep('confirm');
     } else if (opt.id === 'services') {
-      addLocal('ai', 'We offer: Property Acquisition & Development, Leasing (Residential, Commercial, Office), Property & Asset Management, Project Management, and Risk & Credit Management. Would you like details on pricing or availability?');
-      setMode('chat');
+      sendVisitorMessage(opt.label);
     } else if (opt.id === 'faq') {
+      addLocal('user', opt.label);
       addLocal('ai', 'Here are some frequently asked questions:');
       setMode('faq');
     } else if (opt.id === 'feedback') {
+      addLocal('user', opt.label);
       addLocal('ai', "We'd love to hear your feedback! Please fill out the form below.");
       setMode('feedback');
       setFeedbackSubmitted(false);
       setFeedbackForm({ rating: 0, name: '', email: '', comment: '' });
+    } else if (opt.id === 'track' || opt.id === 'report') {
+      sendVisitorMessage(opt.label);
     } else {
+      addLocal('user', opt.label);
       const prompts = {
         ask: "Sure! Go ahead and type your question — I'm here to help.",
         track: 'Please provide your reference number or describe your enquiry.',
@@ -159,7 +179,7 @@ const ChatWidget = () => {
       addLocal('ai', prompts[opt.id]);
       setMode('chat');
     }
-  }, [addLocal]);
+  }, [addLocal, sendVisitorMessage]);
 
   const handleFaqSelect = useCallback((faq) => {
     addLocal('user', faq.q);

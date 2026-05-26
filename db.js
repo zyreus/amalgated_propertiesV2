@@ -225,9 +225,14 @@ export function updateLead(id, data) {
     phone ?? row.phone,
     company ?? row.company,
     inquiry_message ?? row.inquiry_message,
-    status ?? row.status
+    status ?? row.status,
+    id
   );
   return stmts.getLeadById.get(id);
+}
+
+export function getLeadByConversation(conversationId) {
+  return stmts.getLeadsByConvo.get(conversationId);
 }
 
 // ── Visitor visits (analytics) ──

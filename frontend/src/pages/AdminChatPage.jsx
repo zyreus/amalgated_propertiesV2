@@ -43,7 +43,7 @@ function fmtDate(d) {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ', ' + fmtTime(d)
 }
 
-export default function AdminChatPage({ onLogout }) {
+export default function AdminChatPage({ onLogout, embedded = false }) {
   const [conversations, setConversations] = useState([])
   const [filter, setFilter] = useState('all')
   const [chatReadFilter, setChatReadFilter] = useState('all') // all | unread | read
@@ -78,7 +78,12 @@ export default function AdminChatPage({ onLogout }) {
   const inputRef = useRef(null)
   const typingTimeout = useRef(null)
   const prevActiveId = useRef(null)
+  const activeIdRef = useRef(null)
+  const fetchConversationsRef = useRef(() => {})
+  const fetchMessagesRef = useRef(() => {})
+  const fetchTicketsRef = useRef(() => {})
   const fetchLeadsRef = useRef(() => {})
+  const onLogoutRef = useRef(onLogout)
 
   const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem('admin_token')
@@ -93,6 +98,7 @@ export default function AdminChatPage({ onLogout }) {
       setConversations(data)
     } catch { /* ignore */ }
   }, [getAuthHeaders, onLogout])
+  fetchConversationsRef.current = fetchConversations
 
   const fetchMessages = useCallback(async (id) => {
     try {
@@ -102,6 +108,7 @@ export default function AdminChatPage({ onLogout }) {
       setMessages(data)
     } catch { /* ignore */ }
   }, [getAuthHeaders, onLogout])
+  fetchMessagesRef.current = fetchMessages
 
   const fetchFeedback = useCallback(async () => {
     setFeedbackLoading(true)
@@ -142,6 +149,7 @@ export default function AdminChatPage({ onLogout }) {
       setTickets(await res.json())
     } catch { /* ignore */ }
   }, [getAuthHeaders, onLogout])
+  fetchTicketsRef.current = fetchTickets
 
   const bulkAction = async (resource, action, ids) => {
     if (!ids?.length) return
@@ -156,6 +164,14 @@ export default function AdminChatPage({ onLogout }) {
   }
 
   useEffect(() => { fetchConversations() }, [fetchConversations])
+
+  useEffect(() => {
+    activeIdRef.current = activeId
+  }, [activeId])
+
+  useEffect(() => {
+    onLogoutRef.current = onLogout
+  }, [onLogout])
 
   useEffect(() => {
     if (view === 'leads') fetchLeads()
@@ -184,25 +200,28 @@ export default function AdminChatPage({ onLogout }) {
   }, [view])
 
   useEffect(() => {
-    const socket = io()
+    const socket = io({
+      auth: { token: localStorage.getItem('admin_token') || '' },
+    })
     socketRef.current = socket
     socket.emit('admin:join')
-    socket.on('conversations:refresh', () => fetchConversations())
-    socket.on('tickets:refresh', () => fetchTickets())
+    socket.on('admin:unauthorized', () => onLogoutRef.current?.())
+    socket.on('conversations:refresh', () => fetchConversationsRef.current())
+    socket.on('tickets:refresh', () => fetchTicketsRef.current())
     socket.on('admin:newLead', (lead) => {
       setNewLeadAlert(lead)
       fetchLeadsRef.current()
       setTimeout(() => setNewLeadAlert(null), 6000)
     })
     socket.on('chat:message', (msg) => {
-      setMessages((prev) => (msg.conversation_id === activeId ? [...prev, msg] : prev))
+      setMessages((prev) => (msg.conversation_id === activeIdRef.current ? [...prev, msg] : prev))
     })
     socket.on('chat:newMessage', ({ conversationId }) => {
-      fetchConversations()
-      if (conversationId === activeId) fetchMessages(conversationId)
+      fetchConversationsRef.current()
+      if (conversationId === activeIdRef.current) fetchMessagesRef.current(conversationId)
     })
     return () => socket.disconnect()
-  }, [activeId])
+  }, [])
 
   useEffect(() => {
     if (!activeId) return
@@ -386,7 +405,7 @@ export default function AdminChatPage({ onLogout }) {
   const displaySub = (c) => c.visitor_email || c.id.slice(0, 8)
 
   return (
-    <div className="flex h-screen bg-white">
+    <div className={embedded ? 'flex h-[720px] min-h-[560px] overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-card' : 'flex h-screen bg-white'}>
 
       {/* ── Sidebar ─────────────────────────────────────────── */}
       <div className={`${sidebarOpen ? 'w-[320px] min-w-[320px]' : 'w-0 min-w-0'} flex flex-col border-r border-gray-200 bg-white transition-all duration-200 overflow-hidden`}>
@@ -409,12 +428,14 @@ export default function AdminChatPage({ onLogout }) {
                 className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 active:scale-90 disabled:opacity-50">
                 <svg className={`h-4 w-4 transition-transform duration-500 ${refreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" /></svg>
               </button>
-              <button onClick={onLogout} title="Logout"
-                className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600">
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
-                </svg>
-              </button>
+              {!embedded && (
+                <button onClick={onLogout} title="Logout"
+                  className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
 

@@ -20,7 +20,7 @@ import {
   createConversation, getConversation, getAllConversations,
   updateStatus, updateMode, updateVisitor, addMessage, getMessages, touchConversation,
   getArchivedConversations, archiveConversation, deleteConversation,
-  createLead, getLeads, getLeadById, updateLeadStatus, updateLead,
+  createLead, getLeads, getLeadById, getLeadByConversation, updateLeadStatus, updateLead,
   createOrUpdateVisit, getVisitByVisitId, getAllVisits, getVisitsForAnalytics, updateVisitLocation,
   createTicket, getTickets, getTicketById, getTicketsByConvo, updateTicket, setTicketUnread,
   incrementConversationUnread, clearConversationUnread,
@@ -93,6 +93,11 @@ const aiContexts = new Map();
 const LEAD_CAPTURE_KEYWORDS = /\b(service|services|pricing|price|cost|rates?|availability|available|inquire|inquiry|quote|book|schedule|viewing|tour|lease|rent|leasing)\b/i;
 function wantsLeadCapture(message) {
   return typeof message === 'string' && LEAD_CAPTURE_KEYWORDS.test(message);
+}
+
+const MAINTENANCE_KEYWORDS = /\b(maintenance|repair|broken|leak|issue|problem|concern|damage|fix|urgent)\b/i;
+function isMaintenanceConcern(message) {
+  return typeof message === 'string' && MAINTENANCE_KEYWORDS.test(message);
 }
 
 // Simple User-Agent parsing for device/browser
@@ -292,6 +297,16 @@ function requireAdmin(req, res, next) {
   }
 }
 
+function verifySocketAdmin(socket) {
+  const token = socket.handshake?.auth?.token;
+  if (!token) return null;
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch {
+    return null;
+  }
+}
+
 // ── Admin REST endpoints (protected) ──
 
 app.get('/api/admin/conversations', requireAdmin, (_req, res) => {
@@ -464,15 +479,23 @@ io.on('connection', (socket) => {
 
   // Admin joins the admin room + a specific conversation
   socket.on('admin:join', () => {
+    const admin = verifySocketAdmin(socket);
+    if (!admin) {
+      socket.emit('admin:unauthorized');
+      return;
+    }
     socket.join('admin');
     socket.data.role = 'admin';
+    socket.data.admin = admin;
   });
 
   socket.on('admin:joinConversation', (conversationId) => {
+    if (socket.data.role !== 'admin') return;
     socket.join(conversationId);
   });
 
   socket.on('admin:leaveConversation', (conversationId) => {
+    if (socket.data.role !== 'admin') return;
     socket.leave(conversationId);
   });
 
@@ -484,6 +507,32 @@ io.on('connection', (socket) => {
     createConversation(conversationId);
     addMessage(conversationId, 'user', content.trim());
     incrementConversationUnread(conversationId);
+
+    let lead = getLeadByConversation(conversationId);
+    if (!lead) {
+      lead = createLead({
+        name: 'Website Visitor',
+        email: `visitor-${conversationId.slice(0, 8)}@chat.apmc.local`,
+        phone: '',
+        company: '',
+        inquiry_message: content.trim(),
+        conversation_id: conversationId,
+        source_page: source_page || '',
+      });
+      io.to('admin').emit('admin:newLead', lead);
+    } else if (!lead.inquiry_message) {
+      lead = updateLead(lead.id, { inquiry_message: content.trim(), source_page: source_page || lead.source_page });
+      io.to('admin').emit('admin:newLead', lead);
+    }
+
+    if (isMaintenanceConcern(content.trim()) && !getTicketsByConvo(conversationId).length) {
+      createTicket(conversationId, {
+        priority: 'medium',
+        status: 'open',
+        notes: content.trim(),
+      });
+      io.to('admin').emit('tickets:refresh');
+    }
 
     // Update visit analytics: message count, optional page, duration
     const visit = getVisitByVisitId(conversationId);
@@ -565,15 +614,27 @@ io.on('connection', (socket) => {
   // Visitor submits lead capture form (name, email, phone, etc.)
   socket.on('visitor:leadDetails', ({ conversationId, name, email, phone, company, inquiry_message, source_page }) => {
     if (!conversationId || !name?.trim() || !email?.trim()) return;
-    const lead = createLead({
-      name: name.trim(),
-      email: email.trim(),
-      phone: (phone || '').trim() || null,
-      company: (company || '').trim() || null,
-      inquiry_message: (inquiry_message || '').trim() || null,
-      conversation_id: conversationId,
-      source_page: (source_page || '').trim() || null,
-    });
+    const existingLead = getLeadByConversation(conversationId);
+    const lead = existingLead
+      ? updateLead(existingLead.id, {
+          name: name.trim(),
+          email: email.trim(),
+          phone: (phone || '').trim() || null,
+          company: (company || '').trim() || null,
+          inquiry_message: (inquiry_message || existingLead.inquiry_message || '').trim() || null,
+          source_page: (source_page || existingLead.source_page || '').trim() || null,
+          status: 'qualified',
+        })
+      : createLead({
+          name: name.trim(),
+          email: email.trim(),
+          phone: (phone || '').trim() || null,
+          company: (company || '').trim() || null,
+          inquiry_message: (inquiry_message || '').trim() || null,
+          conversation_id: conversationId,
+          source_page: (source_page || '').trim() || null,
+        });
+    updateVisitor(conversationId, name.trim(), email.trim());
     const thankMsg = 'Thank you! We have your details and our team will get back to you shortly.';
     addMessage(conversationId, 'ai', thankMsg);
     const aiMsg = {
@@ -611,6 +672,7 @@ io.on('connection', (socket) => {
 
   // Admin sends a message
   socket.on('admin:message', ({ conversationId, content, adminName }) => {
+    if (socket.data.role !== 'admin') return;
     if (!content?.trim()) return;
 
     addMessage(conversationId, 'admin', content.trim(), adminName || 'Support Agent');
@@ -631,10 +693,12 @@ io.on('connection', (socket) => {
 
   // Admin typing indicator
   socket.on('admin:typing', ({ conversationId }) => {
+    if (socket.data.role !== 'admin') return;
     io.to(conversationId).emit('chat:typing', { sender: 'admin' });
   });
 
   socket.on('admin:typingStop', ({ conversationId }) => {
+    if (socket.data.role !== 'admin') return;
     io.to(conversationId).emit('chat:typingStop');
   });
 });

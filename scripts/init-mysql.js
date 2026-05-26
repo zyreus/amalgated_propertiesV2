@@ -328,6 +328,8 @@ const tableStatements = [
   `CREATE TABLE IF NOT EXISTS announcements (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(191) NOT NULL,
+    excerpt TEXT,
+    category VARCHAR(120) DEFAULT 'Company Update',
     body TEXT NOT NULL,
     audience ENUM('all','admin','client') DEFAULT 'all',
     status ENUM('draft','published','archived') DEFAULT 'published',
@@ -351,6 +353,11 @@ const tableStatements = [
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 ];
 
+const migrationStatements = [
+  "ALTER TABLE announcements ADD COLUMN excerpt TEXT",
+  "ALTER TABLE announcements ADD COLUMN category VARCHAR(120) DEFAULT 'Company Update'",
+];
+
 const sampleProperties = [
   ['amalgated-corporate-center', 'Amalgated Corporate Center', 'office', 'J.P. Laurel Avenue, Bajada', 'Premium office spaces near Davao business districts.', 145000, 420, 0, 4, 12, ['24/7 security', 'backup power', 'parking']],
   ['obrero-commercial-hub', 'Obrero Commercial Hub', 'commercial', 'Bo. Obrero, Davao City', 'Street-facing retail and service spaces with strong foot traffic.', 95000, 260, 0, 3, 8, ['storefront', 'CCTV', 'loading area']],
@@ -367,6 +374,30 @@ const sampleProperties = [
   ['sasa-airport-commercial', 'Sasa Airport Commercial', 'commercial', 'Sasa, Davao City', 'Commercial spaces serving airport-adjacent traffic.', 82000, 180, 0, 2, 6, ['road frontage', 'parking', 'CCTV']],
   ['catalunan-grande-villas', 'Catalunan Grande Villas', 'residential', 'Catalunan Grande, Davao City', 'Spacious villas for long-term corporate housing.', 98000, 240, 4, 3, 2, ['garden', 'maid room', 'covered parking']],
   ['apmc-laurel-showroom', 'APMC Laurel Showroom', 'commercial', 'J.P. Laurel Avenue, Davao City', 'Flagship showroom space for premium brands.', 165000, 350, 0, 3, 10, ['glass frontage', 'high ceiling', 'backup power']],
+];
+
+const sampleAnnouncements = [
+  [
+    'APMC Expands Portfolio Visibility Across Key Regional Markets',
+    'Company Update',
+    'The group continues to organize its real estate portfolio around better leasing access and stronger tenant support.',
+    'The group continues to organize its real estate portfolio around better leasing access and stronger tenant support.',
+    '2026-05-01 00:00:00',
+  ],
+  [
+    'Why Strategic Property Management Matters for Growing Tenants',
+    'Insight',
+    'Reliable property management helps businesses reduce downtime, plan occupancy, and protect long-term value.',
+    'Reliable property management helps businesses reduce downtime, plan occupancy, and protect long-term value.',
+    '2026-04-01 00:00:00',
+  ],
+  [
+    'Commercial Leasing Demand Remains Active in Provincial Hubs',
+    'Market Notes',
+    'Banks, service firms, and retail operators continue to seek dependable spaces in high-connectivity locations.',
+    'Banks, service firms, and retail operators continue to seek dependable spaces in high-connectivity locations.',
+    '2026-03-01 00:00:00',
+  ],
 ];
 
 async function seedData(connection) {
@@ -424,6 +455,18 @@ async function seedData(connection) {
     }
   }
 
+  const [[announcementCount]] = await connection.execute('SELECT COUNT(*) AS count FROM announcements');
+  if (announcementCount.count === 0) {
+    for (const announcement of sampleAnnouncements) {
+      await connection.execute(
+        `INSERT INTO announcements
+          (title, category, excerpt, body, audience, status, published_at)
+         VALUES (?, ?, ?, ?, 'all', 'published', ?)`,
+        announcement
+      );
+    }
+  }
+
   const [[userCount]] = await connection.execute('SELECT COUNT(*) AS count FROM users');
   if (userCount.count === 0) {
     const [[adminRole]] = await connection.execute("SELECT id FROM roles WHERE name = 'admin'");
@@ -462,6 +505,14 @@ async function main() {
   try {
     for (const statement of tableStatements) {
       await connection.query(statement);
+    }
+
+    for (const statement of migrationStatements) {
+      try {
+        await connection.query(statement);
+      } catch (error) {
+        if (error.code !== 'ER_DUP_FIELDNAME') throw error;
+      }
     }
 
     await seedData(connection);
