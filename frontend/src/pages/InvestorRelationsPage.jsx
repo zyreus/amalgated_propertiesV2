@@ -1,7 +1,7 @@
 import React from 'react';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Download, TrendingUp } from 'lucide-react';
-import { investorCharts, investorMetrics } from '../data/enterpriseContent.js';
+import { investmentPrograms, investorCharts, investorMetrics, project101 } from '../data/enterpriseContent.js';
 
 const InvestorRelationsPage = () => (
   <div className="bg-brand-background-alt">
@@ -67,6 +67,45 @@ const InvestorRelationsPage = () => (
                   <Bar dataKey="value" fill="#003B65" radius={[10, 10, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-[2rem] bg-white p-6 shadow-card">
+            <h2 className="text-xl font-bold text-brand-text">Rent Income Growth</h2>
+            <p className="mt-2 text-sm text-brand-text/64">Illustrative indexed rent income trend from lease portfolio growth.</p>
+            <div className="mt-6 h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={investorCharts.rentIncome}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#dce9f2" />
+                  <XAxis dataKey="year" stroke="#64748b" />
+                  <YAxis stroke="#64748b" tickFormatter={(value) => `₱${value}M`} />
+                  <Tooltip formatter={(value) => `₱${value}M`} />
+                  <Bar dataKey="income" fill="#75A2BF" radius={[10, 10, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] bg-white p-6 shadow-card">
+            <h2 className="text-xl font-bold text-brand-text">Acquisition Programs</h2>
+            <p className="mt-2 text-sm text-brand-text/64">{project101.statement}</p>
+            <div className="mt-6 space-y-4">
+              {investmentPrograms.map((program) => (
+                <div key={program.title} className="rounded-3xl bg-brand-background-alt p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-bold text-brand-text">{program.title}</p>
+                      <p className="mt-1 text-sm text-brand-text/64">{program.focus}</p>
+                    </div>
+                    <span className="rounded-full bg-brand-primary px-3 py-1 text-sm font-bold text-white">{program.capital}</span>
+                  </div>
+                  <div className="mt-4 h-2 rounded-full bg-white">
+                    <div className="h-full rounded-full bg-brand-primary" style={{ width: `${program.progress}%` }} />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

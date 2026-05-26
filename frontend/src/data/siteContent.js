@@ -3,23 +3,27 @@ import {
   Building2,
   ClipboardCheck,
   Handshake,
+  Landmark,
   MapPinned,
+  ReceiptText,
   ShieldCheck,
   TrendingUp,
   Users,
 } from 'lucide-react';
 
 export const stats = [
-  { value: '92', label: 'Commercial real estate assets', detail: 'Across strategic Philippine locations' },
-  { value: '10', label: 'Residential estates', detail: 'Managed communities and units' },
-  { value: '4.4B', label: 'Lease receivables', detail: 'With active contracts' },
-  { value: '9', label: 'Group companies', detail: 'A diversified business network' },
+  { value: '92', suffix: '', label: 'Commercial real estate assets', detail: 'Income-generating and pipeline assets across strategic Philippine locations', icon: Building2 },
+  { value: '10', suffix: '', label: 'Residential estates', detail: 'Managed communities, condominium units, and estate holdings', icon: MapPinned },
+  { value: '4.4', suffix: 'B', prefix: '₱', label: 'Lease receivables', detail: 'Contracted receivables from active lease relationships', icon: ReceiptText },
+  { value: '9', suffix: '', label: 'Group companies', detail: 'Diversified operating companies within the Amalgated group', icon: Landmark },
+  { value: '100', suffix: '+', label: 'Active contracts', detail: 'Commercial, institutional, government, and service tenant agreements', icon: Handshake },
+  { value: '88.5', suffix: '%', label: 'Occupancy rate', detail: '2024 stabilized portfolio occupancy across managed assets', icon: TrendingUp },
 ];
 
 export const services = [
   {
     title: 'Property Leasing',
-    description: 'End-to-end leasing support for banks, BPOs, offices, retail operators, and commercial tenants.',
+    description: 'End-to-end leasing support for banks, government offices, BPOs, telcos, retail operators, and commercial tenants.',
     icon: Building2,
   },
   {
@@ -29,7 +33,7 @@ export const services = [
   },
   {
     title: 'Asset Strategy',
-    description: 'Data-informed guidance for acquisitions, repositioning, occupancy, and long-term value creation.',
+    description: 'Data-informed guidance for acquisitions, Project 101 expansion, repositioning, occupancy, and long-term value creation.',
     icon: TrendingUp,
   },
   {
@@ -41,25 +45,25 @@ export const services = [
 
 export const projects = [
   {
-    title: 'Mindanao Commercial Portfolio',
-    location: 'Davao, Tagum, General Santos',
-    category: 'Commercial Leasing',
+    title: '₱500M Nationwide Acquisition Program',
+    location: 'Luzon, Visayas, Mindanao',
+    category: 'Investment Program',
     image: 'https://images.pexels.com/photos/325185/pexels-photo-325185.jpeg?auto=compress&cs=tinysrgb&w=1200',
-    description: 'A growing network of income-generating commercial properties serving institutional tenants.',
+    description: 'A multi-region acquisition mandate designed to expand income-producing commercial buildings and strategic landholdings.',
   },
   {
-    title: 'Caticlan Gateway Sites',
-    location: 'Aklan, Visayas',
-    category: 'Destination Commercial',
-    image: 'https://images.pexels.com/photos/323780/pexels-photo-323780.jpeg?auto=compress&cs=tinysrgb&w=1200',
-    description: 'Strategically located leasing assets near tourism and transport corridors.',
-  },
-  {
-    title: 'Pryce Tower Units',
+    title: '₱100M Corporate Office Expansion',
     location: 'Davao City',
-    category: 'Condominium Assets',
+    category: 'Corporate Infrastructure',
+    image: 'https://images.pexels.com/photos/323780/pexels-photo-323780.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    description: 'A premium headquarters and operations center supporting governance, leasing, accounting, and portfolio analytics.',
+  },
+  {
+    title: '₱100M Keys School Expansion',
+    location: 'Institutional Asset Program',
+    category: 'Education Property',
     image: 'https://images.pexels.com/photos/2102587/pexels-photo-2102587.jpeg?auto=compress&cs=tinysrgb&w=1200',
-    description: 'Managed condominium and parking assets built for convenience and recurring value.',
+    description: 'An education-linked property initiative expanding the Key School asset base and long-term institutional value.',
   },
 ];
 

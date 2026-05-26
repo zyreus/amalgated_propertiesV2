@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Award, BriefcaseBusiness, X } from 'lucide-react';
+import { Award, BriefcaseBusiness, GraduationCap, X } from 'lucide-react';
 import { leadershipGroups } from '../data/enterpriseContent.js';
 
 const allMembers = leadershipGroups.flatMap((group) => group.members.map((member) => ({ ...member, group: group.group })));
@@ -26,7 +26,7 @@ const LeadershipPage = () => {
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
             {[
               ['Committee Members', allMembers.length],
-              ['Combined Experience', `${combinedExperience}+`],
+              ['Combined Experience', combinedExperience >= 300 ? '300+' : `${combinedExperience}+`],
               ['Governance Groups', leadershipGroups.length],
             ].map(([label, value]) => (
               <div key={label} className="rounded-3xl border border-white/15 bg-white/10 p-5 backdrop-blur">
@@ -69,6 +69,10 @@ const LeadershipPage = () => {
                       <BriefcaseBusiness className="mt-0.5 h-4 w-4 shrink-0 text-brand-primary" />
                       {member.expertise}
                     </p>
+                    <p className="mt-3 flex items-start gap-2 text-sm leading-6 text-brand-text/68">
+                      <GraduationCap className="mt-0.5 h-4 w-4 shrink-0 text-brand-primary" />
+                      {member.education}
+                    </p>
                   </div>
                 </button>
               ))}
@@ -99,6 +103,8 @@ const LeadershipPage = () => {
                 <p className="mt-2 font-semibold text-brand-primary">{activeMember.position}</p>
                 <p className="mt-6 text-sm font-semibold uppercase tracking-[0.16em] text-brand-text/50">Expertise</p>
                 <p className="mt-2 leading-7 text-brand-text/76">{activeMember.expertise}</p>
+                <p className="mt-6 text-sm font-semibold uppercase tracking-[0.16em] text-brand-text/50">Educational Background</p>
+                <p className="mt-2 leading-7 text-brand-text/76">{activeMember.education}</p>
                 <p className="mt-6 text-sm font-semibold uppercase tracking-[0.16em] text-brand-text/50">Biography</p>
                 <p className="mt-2 leading-8 text-brand-text/76">{activeMember.bio}</p>
               </div>
