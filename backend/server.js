@@ -27,14 +27,23 @@ import {
 } from '../db.js';
 
 const app = express();
-const port = process.env.PORT || 8000;
+const port = process.env.PORT || 8020;
+const host = process.env.HOST || '0.0.0.0';
+const publicOrigin = (process.env.PUBLIC_ORIGIN || 'https://theamalgatedproperties.com').replace(/\/$/, '');
+const networkHost = process.env.NETWORK_HOST || '192.168.0.222';
+const allowedOrigins = [
+  publicOrigin,
+  `http://${networkHost}:6175`,
+  `http://${networkHost}:${port}`,
+  /^http:\/\/localhost:\d+$/,
+];
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
-  cors: { origin: /^http:\/\/localhost:\d+$/, methods: ['GET', 'POST'] },
+  cors: { origin: allowedOrigins, methods: ['GET', 'POST'] },
 });
 
 app.use(securityHeaders());
-app.use(cors({ origin: /^http:\/\/localhost:\d+$/ }));
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 mountRoutes(app, io);
 
@@ -737,6 +746,7 @@ if (fs.existsSync(clientDir)) {
   });
 }
 
-httpServer.listen(port, () => {
-  console.log(`Server listening on http://localhost:${port}`);
+httpServer.listen(port, host, () => {
+  console.log(`Server listening on http://${host}:${port}`);
+  console.log(`Public origin: ${publicOrigin}`);
 });

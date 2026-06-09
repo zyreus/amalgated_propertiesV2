@@ -155,10 +155,10 @@ const Contact = () => {
                   Main Office Location
                 </p>
                 <p className="mt-1 font-semibold text-brand-text">
-                  Amalgated Bldg. Doña Carolina Bldg, J.P. Laurel Ave, Bo. Obrero, Davao City, Philippines
+                  Amalgated Building, J.P. Laurel Avenue, Bo. Obrero, Davao City, Philippines
                 </p>
                 <a
-                  href="https://www.google.com/maps/search/?api=1&query=Amalgated+Bldg+Doña+Carolina+Bldg+J.P.+Laurel+Ave+Bo.+Obrero+Davao+City+Philippines"
+                  href="https://www.google.com/maps/search/?api=1&query=Amalgated+Building+J.P.+Laurel+Avenue+Bo.+Obrero+Davao+City+Philippines"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-brand-primary hover:text-brand-primary-hover"

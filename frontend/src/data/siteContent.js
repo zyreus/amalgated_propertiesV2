@@ -3,7 +3,6 @@ import {
   Building2,
   ClipboardCheck,
   Handshake,
-  Landmark,
   MapPinned,
   ReceiptText,
   ShieldCheck,
@@ -12,12 +11,11 @@ import {
 } from 'lucide-react';
 
 export const stats = [
-  { value: '92', suffix: '', label: 'Commercial real estate assets', detail: 'Income-generating and pipeline assets across strategic Philippine locations', icon: Building2 },
-  { value: '10', suffix: '', label: 'Residential estates', detail: 'Managed communities, condominium units, and estate holdings', icon: MapPinned },
-  { value: '4.4', suffix: 'B', prefix: '₱', label: 'Lease receivables', detail: 'Contracted receivables from active lease relationships', icon: ReceiptText },
-  { value: '9', suffix: '', label: 'Group companies', detail: 'Diversified operating companies within the Amalgated group', icon: Landmark },
-  { value: '100', suffix: '+', label: 'Active contracts', detail: 'Commercial, institutional, government, and service tenant agreements', icon: Handshake },
-  { value: '88.5', suffix: '%', label: 'Occupancy rate', detail: '2024 stabilized portfolio occupancy across managed assets', icon: TrendingUp },
+  { value: '92', suffix: '', label: 'Commercial Assets', detail: 'Income-generating and pipeline commercial assets across strategic Philippine locations', icon: Building2 },
+  { value: '10', suffix: '', label: 'Residential Estates', detail: 'Managed residential estates, condominium interests, and long-term community holdings', icon: MapPinned },
+  { value: '4.4', suffix: 'B', prefix: '₱', label: 'Lease Receivables', detail: 'Contracted receivables from active lease relationships and institutional agreements', icon: ReceiptText },
+  { value: '100', suffix: '+', label: 'Active Contracts', detail: 'Commercial, institutional, government, and service tenant agreements', icon: Handshake },
+  { value: '88.5', suffix: '%', label: 'Occupancy', detail: '2024 stabilized occupancy across managed and portfolio assets', icon: TrendingUp },
 ];
 
 export const services = [
@@ -45,25 +43,31 @@ export const services = [
 
 export const projects = [
   {
-    title: '₱500M Nationwide Acquisition Program',
-    location: 'Luzon, Visayas, Mindanao',
-    category: 'Investment Program',
-    image: 'https://images.pexels.com/photos/325185/pexels-photo-325185.jpeg?auto=compress&cs=tinysrgb&w=1200',
-    description: 'A multi-region acquisition mandate designed to expand income-producing commercial buildings and strategic landholdings.',
-  },
-  {
-    title: '₱100M Corporate Office Expansion',
+    title: 'Corporate Office Expansion',
     location: 'Davao City',
     category: 'Corporate Infrastructure',
     image: 'https://images.pexels.com/photos/323780/pexels-photo-323780.jpeg?auto=compress&cs=tinysrgb&w=1200',
     description: 'A premium headquarters and operations center supporting governance, leasing, accounting, and portfolio analytics.',
+    progress: 68,
+    capital: '₱100M',
   },
   {
-    title: '₱100M Keys School Expansion',
+    title: 'Keys School Expansion',
     location: 'Institutional Asset Program',
     category: 'Education Property',
     image: 'https://images.pexels.com/photos/2102587/pexels-photo-2102587.jpeg?auto=compress&cs=tinysrgb&w=1200',
     description: 'An education-linked property initiative expanding the Key School asset base and long-term institutional value.',
+    progress: 54,
+    capital: '₱100M',
+  },
+  {
+    title: '₱500M Acquisition Program',
+    location: 'Luzon, Visayas, Mindanao',
+    category: 'Investment Program',
+    image: 'https://images.pexels.com/photos/325185/pexels-photo-325185.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    description: 'A multi-region acquisition mandate designed to expand income-producing commercial buildings and strategic landholdings.',
+    progress: 41,
+    capital: '₱500M',
   },
 ];
 
@@ -87,22 +91,28 @@ export const testimonials = [
 
 export const news = [
   {
-    title: 'APMC Expands Portfolio Visibility Across Key Regional Markets',
+    title: 'Strategic Leasing Growth Across Priority Corridors',
     date: 'May 2026',
-    category: 'Company Update',
-    excerpt: 'The group continues to organize its real estate portfolio around better leasing access and stronger tenant support.',
+    category: 'Strategic Leasing Growth',
+    excerpt: 'APMC continues to organize its commercial portfolio around stronger tenant access, institutional lease discipline, and long-term occupancy growth.',
   },
   {
-    title: 'Why Strategic Property Management Matters for Growing Tenants',
+    title: 'Property Management Insights for Institutional Tenants',
     date: 'April 2026',
-    category: 'Insight',
-    excerpt: 'Reliable property management helps businesses reduce downtime, plan occupancy, and protect long-term value.',
+    category: 'Property Management Insights',
+    excerpt: 'Reliable property management helps companies reduce downtime, coordinate maintenance, protect lease value, and keep business operations moving.',
   },
   {
-    title: 'Commercial Leasing Demand Remains Active in Provincial Hubs',
+    title: 'Expansion Programs Position APMC for Nationwide Growth',
     date: 'March 2026',
-    category: 'Market Notes',
-    excerpt: 'Banks, service firms, and retail operators continue to seek dependable spaces in high-connectivity locations.',
+    category: 'Expansion Programs',
+    excerpt: 'Project 101 and the ₱500M acquisition program support a disciplined pipeline across Luzon, Visayas, and Mindanao.',
+  },
+  {
+    title: 'Market Perspectives on Regional Commercial Demand',
+    date: 'February 2026',
+    category: 'Market Perspectives',
+    excerpt: 'Banks, service firms, telcos, retailers, and government-linked users continue to seek dependable spaces in high-connectivity provincial hubs.',
   },
 ];
 

@@ -18,11 +18,12 @@ const HeroSection = () => (
           Real Estate & Property Management
         </span>
         <h1 className="mt-6 max-w-4xl text-4xl font-bold tracking-tight text-white sm:text-6xl lg:text-7xl">
-          Premium spaces for companies that build lasting value.
+          Premium property solutions built for long-term value.
         </h1>
         <p className="mt-6 max-w-2xl text-lg leading-8 text-white/82">
-          Amalgated Properties & Management Corporation delivers leasing, property management,
-          asset strategy, and business consultancy for institutional and commercial tenants nationwide.
+          Amalgated Properties & Management Corporation provides strategic leasing, property management,
+          asset acquisition, and business consultancy solutions for institutional and commercial clients
+          across the Philippines.
         </p>
         <div className="mt-9 flex flex-wrap items-center gap-4">
           <Link to="/properties" className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand-primary shadow-soft transition hover:bg-brand-background-alt">
@@ -30,7 +31,7 @@ const HeroSection = () => (
             <ArrowRight className="h-4 w-4" />
           </Link>
           <Link to="/contact" className="inline-flex items-center gap-2 rounded-full border border-white/30 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
-            Talk to Leasing
+            Talk to Our Team
           </Link>
         </div>
       </motion.div>

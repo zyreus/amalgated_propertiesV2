@@ -6,3 +6,4 @@ chat.db
 chat.db-shm
 chat.db-wal
 feedback.json
+.pm2/

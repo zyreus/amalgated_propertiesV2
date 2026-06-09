@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bath, BedDouble, MapPin, Ruler, Search, SlidersHorizontal } from 'lucide-react';
+import { ArrowRight, MapPin, Ruler, Search, SlidersHorizontal } from 'lucide-react';
 import { useProperties } from '../hooks/useProperties.js';
 
 const PropertyGrid = () => {
@@ -174,30 +174,35 @@ const PropertyGrid = () => {
                   {property.name}
                 </h3>
                 <p className="mt-1 text-sm text-brand-text/70">{property.location}</p>
-                <div className="mt-4 grid grid-cols-3 gap-2 text-xs font-medium text-brand-text/65">
+                <p className="mt-3 line-clamp-3 text-sm leading-6 text-brand-text/68">{property.description}</p>
+                <div className="mt-4 grid gap-2 text-xs font-medium text-brand-text/65 sm:grid-cols-2">
                   <span>{property.price}</span>
-                  <span className="inline-flex items-center gap-1">
-                    <BedDouble className="h-3.5 w-3.5 text-brand-primary" />
-                    {property.beds} beds
-                  </span>
                   <span className="inline-flex items-center gap-1">
                     <Ruler className="h-3.5 w-3.5 text-brand-primary" />
                     {property.sqft} sqm
                   </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Bath className="h-3.5 w-3.5 text-brand-primary" />
-                    {property.bathrooms ?? '—'} baths
-                  </span>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {[property.category, property.tag, property.status].filter(Boolean).map((tag) => (
+                    <span key={tag} className="rounded-full bg-brand-primary/10 px-3 py-1 text-xs font-semibold text-brand-primary">
+                      {tag}
+                    </span>
+                  ))}
                 </div>
               </div>
-              <div className="mt-auto flex items-center justify-between border-t border-brand-secondary/30 px-4 pb-4 pt-3 text-sm text-brand-text/70">
-                <p>{property.category}</p>
+              <div className="mt-auto flex flex-col gap-3 border-t border-brand-secondary/30 px-4 pb-4 pt-3 text-sm text-brand-text/70 sm:flex-row sm:items-center sm:justify-between">
                 <Link
                   to={`/properties/${property.slug}`}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-brand-secondary/60 text-brand-text transition hover:border-brand-primary hover:bg-brand-primary hover:text-white"
-                  aria-label={`View ${property.name}`}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-brand-secondary/60 px-4 py-2 font-semibold text-brand-text transition hover:border-brand-primary hover:bg-brand-primary hover:text-white"
                 >
-                  →
+                  View Details
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  to="/contact"
+                  className="inline-flex items-center justify-center rounded-full bg-brand-primary px-4 py-2 font-semibold text-white shadow-brand-primary transition hover:bg-brand-primary-hover"
+                >
+                  Inquire
                 </Link>
               </div>
             </article>

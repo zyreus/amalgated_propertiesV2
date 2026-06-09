@@ -5,12 +5,22 @@
   "type": "module",
   "description": "Premium corporate real estate website for Amalgated Properties & Management Corporation",
   "scripts": {
-    "dev": "vite --config frontend/vite.config.mts",
+    "dev": "vite --config frontend/vite.config.mts --host 0.0.0.0",
     "dev:full": "concurrently -n vite,server -c green,blue \"npm run dev\" \"npm run server\"",
     "build": "vite build --config frontend/vite.config.mts",
     "preview": "vite preview --config frontend/vite.config.mts",
     "db:mysql:init": "node scripts/init-mysql.js",
-    "server": "node backend/server.js"
+    "server": "node backend/server.js",
+    "postinstall": "node scripts/patch-pm2-windows.cjs",
+    "pm2:start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/free-ports.ps1 && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/pm2.ps1 start ecosystem.config.cjs",
+    "pm2:start:all": "npm run pm2:start",
+    "pm2:restart": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/pm2.ps1 restart all",
+    "pm2:reload": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/pm2.ps1 reload all",
+    "pm2:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/pm2.ps1 stop all",
+    "pm2:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/pm2.ps1 status",
+    "pm2:logs": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/pm2.ps1 logs",
+    "domain:hosts": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-local-domain.ps1",
+    "domain:apache": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/enable-apache-domain.ps1"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -40,6 +50,7 @@
     "@vitejs/plugin-react-swc": "^3.6.0",
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.2.1",
+    "pm2": "^7.0.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.14",
     "vite": "^6.0.0"

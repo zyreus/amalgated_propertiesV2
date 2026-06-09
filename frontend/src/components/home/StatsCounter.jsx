@@ -1,6 +1,43 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect, useRef, useState } from 'react';
+import { motion, useInView } from 'framer-motion';
 import { stats } from '../../data/siteContent.js';
+
+const AnimatedNumber = ({ stat }) => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, amount: 0.45 });
+  const [displayValue, setDisplayValue] = useState(0);
+  const target = Number(stat.value);
+
+  useEffect(() => {
+    if (!isInView || Number.isNaN(target)) return undefined;
+
+    let frameId;
+    const duration = 1400;
+    const startedAt = performance.now();
+
+    const tick = (now) => {
+      const progress = Math.min((now - startedAt) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(target * eased);
+      if (progress < 1) frameId = requestAnimationFrame(tick);
+    };
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [isInView, target]);
+
+  const precision = String(stat.value).includes('.') ? 1 : 0;
+  const formatted = displayValue.toLocaleString('en-US', {
+    maximumFractionDigits: precision,
+    minimumFractionDigits: precision,
+  });
+
+  return (
+    <span ref={ref}>
+      {stat.prefix}{formatted}{stat.suffix}
+    </span>
+  );
+};
 
 const StatsCounter = () => (
   <section className="relative overflow-hidden bg-brand-background-alt py-16 sm:py-20">
@@ -24,7 +61,7 @@ const StatsCounter = () => (
           >
             <div className="flex items-start justify-between gap-4">
               <dt className="text-4xl font-bold tracking-tight text-brand-primary">
-                {stat.prefix}{stat.value}{stat.suffix}
+                <AnimatedNumber stat={stat} />
               </dt>
               {stat.icon && (
                 <span className="rounded-2xl bg-brand-primary/10 p-3 text-brand-primary transition group-hover:bg-brand-primary group-hover:text-white">

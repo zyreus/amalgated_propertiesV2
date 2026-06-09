@@ -21,13 +21,27 @@ const ProjectsPage = () => (
     <section className="py-16 sm:py-24">
       <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-3">
         {projects.map((project) => (
-          <article key={project.title} className="overflow-hidden rounded-3xl bg-white shadow-card">
+          <article key={project.title} className="overflow-hidden rounded-3xl bg-white shadow-card transition hover:-translate-y-1 hover:shadow-soft">
             <img src={project.image} alt={project.title} className="h-60 w-full object-cover" />
             <div className="p-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-primary">{project.category}</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-primary">{project.category}</p>
+                <span className="rounded-full bg-brand-primary/10 px-3 py-1 text-xs font-bold text-brand-primary">
+                  {project.capital}
+                </span>
+              </div>
               <h2 className="mt-3 text-xl font-bold text-brand-text">{project.title}</h2>
               <p className="mt-1 text-sm text-brand-text/60">{project.location}</p>
               <p className="mt-4 text-sm leading-6 text-brand-text/70">{project.description}</p>
+              <div className="mt-6">
+                <div className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-[0.16em] text-brand-text/55">
+                  <span>Program Progress</span>
+                  <span>{project.progress}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-brand-primary/10">
+                  <div className="h-full rounded-full bg-brand-primary" style={{ width: `${project.progress}%` }} />
+                </div>
+              </div>
             </div>
           </article>
         ))}

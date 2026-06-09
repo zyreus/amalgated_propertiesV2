@@ -33,17 +33,18 @@ export default function PortalLoginPage() {
               </div>
               <h1 className="mt-8 text-4xl font-bold leading-tight">One secure portal for property operations.</h1>
               <p className="mt-4 max-w-md text-white/75">
-                Access leases, maintenance, documents, analytics, and client support from a branded APMC workspace.
+                Access lease records, maintenance requests, invoices, announcements, operational updates,
+                and support services through the APMC client workspace.
               </p>
             </div>
             <div className="grid grid-cols-3 gap-3 text-sm">
               <div className="rounded-2xl bg-white/10 p-4">
-                <p className="text-2xl font-bold">94%</p>
+                <p className="text-2xl font-bold">88.5%</p>
                 <p className="text-white/70">Occupancy</p>
               </div>
               <div className="rounded-2xl bg-white/10 p-4">
-                <p className="text-2xl font-bold">154</p>
-                <p className="text-white/70">Units</p>
+                <p className="text-2xl font-bold">100+</p>
+                <p className="text-white/70">Contracts</p>
               </div>
               <div className="rounded-2xl bg-white/10 p-4">
                 <p className="text-2xl font-bold">24h</p>
@@ -58,9 +59,10 @@ export default function PortalLoginPage() {
                 <ShieldCheck className="h-4 w-4" />
                 Client Portal
               </div>
-              <h2 className="mt-5 text-3xl font-bold text-brand-primary dark:text-white">Sign in to your client workspace</h2>
+              <h2 className="mt-5 text-3xl font-bold text-brand-primary dark:text-white">Client Login</h2>
               <p className="mt-3 text-sm leading-6 text-brand-text-muted dark:text-slate-300">
-                Manage your leases, maintenance updates, documents, and support requests through a secure APMC client account.
+                Access lease records, maintenance requests, invoices, announcements, operational updates,
+                and support services through the APMC client workspace.
               </p>
 
               <form onSubmit={handleSubmit} className="mt-8 space-y-5">

@@ -9,10 +9,10 @@ const Project101Section = () => (
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-primary">Project 101</p>
         <h2 className="mt-3 text-3xl font-bold tracking-tight text-brand-text sm:text-5xl">
-          A 10-year nationwide building ownership program.
+          Project 101
         </h2>
         <p className="mt-5 text-base leading-8 text-brand-text/72">{project101.statement}</p>
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
           <div className="rounded-3xl bg-white p-6 shadow-card">
             <p className="text-4xl font-black text-brand-primary">{project101.targetBuildings}</p>
             <p className="mt-2 text-sm font-semibold text-brand-text">Target buildings</p>
@@ -20,6 +20,10 @@ const Project101Section = () => (
           <div className="rounded-3xl bg-white p-6 shadow-card">
             <p className="text-4xl font-black text-brand-primary">{project101.horizon}</p>
             <p className="mt-2 text-sm font-semibold text-brand-text">Program horizon</p>
+          </div>
+          <div className="rounded-3xl bg-white p-6 shadow-card">
+            <p className="text-4xl font-black text-brand-primary">54</p>
+            <p className="mt-2 text-sm font-semibold text-brand-text">Active and pipeline indicators</p>
           </div>
         </div>
       </div>

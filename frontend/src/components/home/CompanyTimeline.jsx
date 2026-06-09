@@ -26,7 +26,7 @@ const CompanyTimeline = () => (
           className="absolute left-4 top-0 h-full w-px origin-top bg-brand-primary md:left-0 md:right-0 md:top-8 md:mx-auto md:h-px md:w-full md:origin-left"
         />
 
-        <div className="grid gap-6 md:grid-cols-6">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
           {companyMilestones.map((milestone, index) => (
             <motion.article
               key={`${milestone.year}-${milestone.title}`}

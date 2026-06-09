@@ -14,13 +14,13 @@ export const companyProfile = {
 export const companyMilestones = [
   {
     year: '2007',
-    title: 'Lean Davao Beginning',
+    title: '₱98K Startup',
     value: '₱98K',
     detail: 'Started with ₱98,000 capital from a 20sqm office in Davao, establishing a disciplined operating culture from day one.',
   },
   {
     year: '2010',
-    title: 'ACI Building A & B',
+    title: 'ACI Building A&B',
     value: '2',
     detail: 'Acquired ACI Building A and B, creating an early commercial property base for recurring lease income.',
   },
@@ -32,19 +32,25 @@ export const companyMilestones = [
   },
   {
     year: '2016',
-    title: 'Full Building Ownership',
+    title: 'Strategic Acquisitions',
     value: '3',
-    detail: 'Completed the first full building purchase, secured long-term leases, and added strategic Caticlan assets.',
+    detail: 'Completed full-building purchases, secured long-term leases, and added strategic assets including Caticlan gateway properties.',
   },
   {
     year: '2018-2020',
-    title: 'Pryce Tower + Project 101',
+    title: 'Pryce Tower Expansion',
+    value: 'Pryce',
+    detail: 'Expanded Pryce Tower interests and strengthened participation in a prominent Davao vertical community.',
+  },
+  {
+    year: '2020',
+    title: 'Project 101',
     value: '101',
-    detail: 'Added Pryce Tower interests and launched Project 101, a 10-year program targeting ownership of 101 buildings nationwide.',
+    detail: 'Launched Project 101, a nationwide acquisition initiative for strategic buildings across Luzon, Visayas, and Mindanao.',
   },
   {
     year: '2021-2024',
-    title: 'Institutional Retention',
+    title: '88.5% Occupancy',
     value: '88.5%',
     detail: 'Retained Landbank tenancy, strengthened Pryce Tower governance participation, and reached 88.5% portfolio occupancy.',
   },
@@ -152,14 +158,12 @@ export const investorCharts = {
 export const clientLogos = [
   { name: 'EastWest Bank', category: 'Banking' },
   { name: 'Landbank', category: 'Government Banking' },
-  { name: 'KFC', category: 'Retail & Food' },
   { name: 'DITO', category: 'Telecommunications' },
   { name: 'Converge', category: 'Internet Services' },
-  { name: 'Allianz PNB', category: 'Insurance' },
   { name: 'Pryce Corporation', category: 'Corporate Group' },
-  { name: 'Government Agencies', category: 'Public Sector' },
-  { name: 'BPO Operators', category: 'Business Process Outsourcing' },
-  { name: 'Energy & Agriculture Firms', category: 'Industry' },
+  { name: 'Allianz PNB', category: 'Insurance' },
+  { name: 'KFC', category: 'Retail & Food' },
+  { name: 'UPC Renewables', category: 'Renewable Energy' },
 ];
 
 export const investmentPrograms = [
@@ -185,7 +189,7 @@ export const investmentPrograms = [
 
 export const project101 = {
   title: 'Project 101',
-  statement: 'A 10-year program targeting ownership of 101 buildings nationwide.',
+  statement: 'A long-term nationwide acquisition initiative targeting ownership and management of strategic buildings across Luzon, Visayas, and Mindanao.',
   targetBuildings: 101,
   horizon: '10 years',
   markers: [

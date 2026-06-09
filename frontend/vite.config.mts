@@ -9,11 +9,19 @@ export default defineConfig({
   root: __dirname,
   plugins: [react()],
   server: {
+    host: '0.0.0.0',
+    allowedHosts: [
+      'theamalgatedproperties.com',
+      'www.theamalgatedproperties.com',
+      '.theamalgatedproperties.com',
+      'localhost',
+      '192.168.0.222',
+    ],
     port: 6175,
     proxy: {
-      '/api': 'http://localhost:8000',
+      '/api': 'http://localhost:8020',
       '/socket.io': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8020',
         ws: true,
       },
     },

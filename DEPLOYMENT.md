@@ -2,7 +2,7 @@
 
 ## Production Runtime
 
-- Run the backend on Node.js with `PORT=8000` or the port provided by the host.
+- Run the backend on Node.js with `PORT=8020` or the port provided by the host.
 - Build the frontend with `npm run build` from `frontend/`; the backend serves `frontend/dist` in production.
 - Use a process manager or platform service to keep the backend running and restart on failure.
 

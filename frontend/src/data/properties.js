@@ -84,7 +84,7 @@ export const properties = [
   },
   {
     slug: 'amalgated-caticlan-1',
-    name: 'Amalgated Caticlan 1',
+    name: 'Caticlan Assets',
     region: 'Visayas',
     location: 'Caticlan, Aklan',
     category: 'Commercial',
@@ -147,7 +147,7 @@ export const properties = [
   },
   {
     slug: 'aci-eastwest-bank-bajada',
-    name: 'ACI Eastwest Bank Bajada',
+    name: 'ACI Buildings A & B',
     region: 'Mindanao',
     location: 'Bajada, Davao City',
     category: 'Commercial',
@@ -157,7 +157,7 @@ export const properties = [
     beds: 0,
     sqft: '10,200',
     image: 'https://images.pexels.com/photos/1034662/pexels-photo-1034662.jpeg?auto=compress&cs=tinysrgb&w=1200',
-    description: "An institutional-grade commercial site in one of Davao City's primary corridors.",
+    description: "Institutional-grade ACI building assets in Davao City's primary corridors, positioned for banks, commercial occupiers, and long-term managed leases.",
     featured: true,
   },
   {

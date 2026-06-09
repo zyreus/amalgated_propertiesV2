@@ -14,11 +14,11 @@ const CareersPage = () => (
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/65">Careers</p>
         <h1 className="mt-4 max-w-4xl text-4xl font-bold tracking-tight sm:text-6xl">
-          Build real estate value with a team that serves the Amalgated Way.
+          Build value with a team focused on operational excellence.
         </h1>
         <p className="mt-6 max-w-3xl text-lg leading-8 text-white/78">
-          We look for practical, service-oriented people who care about clients, partners, tenants,
-          suppliers, and the details that keep properties working.
+          Join a professional property organization shaped by operational discipline, client-focused
+          values, and the practical details that keep commercial assets performing.
         </p>
       </div>
     </section>
@@ -26,9 +26,9 @@ const CareersPage = () => (
     <section className="py-16 sm:py-24">
       <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-3">
         {[
-          { title: 'Client-minded work', icon: HeartHandshake },
+          { title: 'Professional work culture', icon: Users },
           { title: 'Operational discipline', icon: BriefcaseBusiness },
-          { title: 'Collaborative teams', icon: Users },
+          { title: 'Client-focused values', icon: HeartHandshake },
         ].map((item) => {
           const Icon = item.icon;
           return (
