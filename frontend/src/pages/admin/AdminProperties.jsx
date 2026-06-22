@@ -60,6 +60,40 @@ function getPrimaryImage(property) {
   return property?.images?.find?.((image) => image.is_primary)?.url || property?.images?.[0]?.url || '';
 }
 
+function readImageFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result || '');
+    reader.onerror = () => reject(new Error('Unable to read the selected image.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function compressImageFile(file, { maxDimension = 1600, quality = 0.85 } = {}) {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Please choose an image file.');
+  }
+
+  const dataUrl = await readImageFile(file);
+  const image = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Unable to process the selected image.'));
+    img.src = dataUrl;
+  });
+
+  const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  context.drawImage(image, 0, 0, width, height);
+
+  return canvas.toDataURL('image/jpeg', quality);
+}
+
 function propertyToForm(property) {
   return {
     name: property.name || '',
@@ -135,18 +169,20 @@ export default function AdminProperties() {
     setForm(initialForm);
   };
 
-  const handlePictureChange = (event) => {
+  const handlePictureChange = async (event) => {
     const file = event.target.files?.[0];
     if (!file) {
       updateField('image_url', '');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      updateField('image_url', reader.result || '');
-    };
-    reader.readAsDataURL(file);
+    try {
+      const imageUrl = await compressImageFile(file);
+      updateField('image_url', imageUrl);
+    } catch (error) {
+      setMessage(error.message || 'Unable to process the selected image.');
+      updateField('image_url', '');
+    }
   };
 
   const handleSubmit = async (event) => {

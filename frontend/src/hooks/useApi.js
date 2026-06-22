@@ -57,7 +57,22 @@ export async function apiRequest(path, { token, headers, cacheTtlMs = 0, cacheKe
   });
 
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  let data = null;
+
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      const isHtml = text.trimStart().startsWith('<');
+      const error = new Error(
+        isHtml
+          ? `Server returned an unexpected response (${response.status}). The API may be unavailable or the request was too large.`
+          : `Server returned an invalid response (${response.status}).`,
+      );
+      error.status = response.status;
+      throw error;
+    }
+  }
 
   if (!response.ok) {
     const error = new Error(data?.message || `API request failed with status ${response.status}`);

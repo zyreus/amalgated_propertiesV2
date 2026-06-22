@@ -1,6 +1,6 @@
 import React from 'react';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Download, TrendingUp } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 import { investmentPrograms, investorCharts, investorMetrics, project101 } from '../data/enterpriseContent.js';
 
 const InvestorRelationsPage = () => (
@@ -110,18 +110,6 @@ const InvestorRelationsPage = () => (
           </div>
         </div>
 
-        <div className="mt-8 rounded-[2rem] bg-brand-primary p-8 text-white shadow-soft">
-          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-white/65">Reports & Opportunities</p>
-              <h2 className="mt-2 text-2xl font-bold">Download investor materials and portfolio briefs.</h2>
-            </div>
-            <a href="/contact" className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand-primary transition hover:bg-brand-background-alt">
-              <Download className="h-4 w-4" />
-              Request Reports
-            </a>
-          </div>
-        </div>
       </div>
     </section>
   </div>

@@ -5,6 +5,7 @@ import leasesRoutes from './routes/leases.js';
 import paymentsRoutes from './routes/payments.js';
 import maintenanceRoutes from './routes/maintenance.js';
 import announcementsRoutes from './routes/announcements.js';
+import usersRoutes from './routes/users.js';
 
 export function mountRoutes(app, io) {
   app.locals.io = io;
@@ -16,6 +17,7 @@ export function mountRoutes(app, io) {
   app.use('/api/pm/payments', paymentsRoutes);
   app.use('/api/pm/maintenance', maintenanceRoutes);
   app.use('/api/pm/announcements', announcementsRoutes);
+  app.use('/api/pm/users', usersRoutes);
 }
 
 export default mountRoutes;

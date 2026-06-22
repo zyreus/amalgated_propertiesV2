@@ -9,11 +9,9 @@ import ServicesPage from './pages/ServicesPage.jsx';
 import PropertiesPage from './pages/PropertiesPage.jsx';
 import ProjectsPage from './pages/ProjectsPage.jsx';
 import NewsPage from './pages/NewsPage.jsx';
-import CareersPage from './pages/CareersPage.jsx';
 import PropertyDetailPage from './pages/PropertyDetailPage.jsx';
 import WhyUsPage from './pages/WhyUsPage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
-import LeadershipPage from './pages/LeadershipPage.jsx';
 import InvestorRelationsPage from './pages/InvestorRelationsPage.jsx';
 import AdminChatPage from './pages/AdminChatPage.jsx';
 import AdminLoginPage from './pages/AdminLoginPage.jsx';
@@ -124,14 +122,12 @@ const App = () => {
               <Route index element={<HomePage />} />
               <Route path="about" element={<AboutPage />} />
               <Route path="company" element={<AboutPage />} />
-              <Route path="leadership" element={<LeadershipPage />} />
               <Route path="services" element={<ServicesPage />} />
               <Route path="properties" element={<PropertiesPage />} />
               <Route path="properties/:slug" element={<PropertyDetailPage />} />
               <Route path="projects" element={<ProjectsPage />} />
               <Route path="news" element={<NewsPage />} />
               <Route path="investors" element={<InvestorRelationsPage />} />
-              <Route path="careers" element={<CareersPage />} />
               <Route path="why-us" element={<WhyUsPage />} />
               <Route path="contact" element={<ContactPage />} />
             </Route>

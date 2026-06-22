@@ -5,12 +5,10 @@ import logo from '../assets/apmc.png';
 const navLinks = [
   { label: 'Home', to: '/' },
   { label: 'About', to: '/about' },
-  { label: 'Leadership', to: '/leadership' },
   { label: 'Properties', to: '/properties' },
   { label: 'Investors', to: '/investors' },
   { label: 'Projects', to: '/projects' },
   { label: 'News', to: '/news' },
-  { label: 'Careers', to: '/careers' },
 ];
 
 const Header = () => {

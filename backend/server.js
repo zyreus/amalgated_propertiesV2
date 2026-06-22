@@ -44,7 +44,8 @@ const io = new Server(httpServer, {
 
 app.use(securityHeaders());
 app.use(cors({ origin: allowedOrigins }));
-app.use(express.json());
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 mountRoutes(app, io);
 
 // ── Email (Contact form) ──
@@ -732,6 +733,16 @@ io.on('connection', (socket) => {
 });
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+
+app.use((err, req, res, next) => {
+  if (err?.type === 'entity.too.large') {
+    return res.status(413).json({ ok: false, message: 'Request payload is too large. Try a smaller image file.' });
+  }
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ ok: false, message: 'Invalid JSON in request body.' });
+  }
+  return next(err);
+});
 
 // ── Serve frontend (Vite build) on the same origin ──
 const clientDir = path.join(__dirname, '../frontend/dist');

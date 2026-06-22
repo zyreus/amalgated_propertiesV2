@@ -6,10 +6,8 @@ import logo from '../assets/apmc.png';
 const footerLinks = {
   Company: [
     { label: 'About', to: '/about' },
-    { label: 'Leadership', to: '/leadership' },
     { label: 'Projects', to: '/projects' },
     { label: 'News', to: '/news' },
-    { label: 'Careers', to: '/careers' },
   ],
   Portfolio: [
     { label: 'Properties', to: '/properties' },
