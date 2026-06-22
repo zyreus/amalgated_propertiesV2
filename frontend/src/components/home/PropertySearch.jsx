@@ -1,12 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Search } from 'lucide-react';
-import { properties } from '../../data/properties.js';
+import { useProperties } from '../../hooks/useProperties.js';
 
-const regions = [...new Set(properties.map((property) => property.region))];
-const categories = [...new Set(properties.map((property) => property.category))];
+const PropertySearch = () => {
+  const { properties } = useProperties();
+  const regions = [...new Set(properties.map((property) => property.region).filter(Boolean))];
+  const categories = [...new Set(properties.map((property) => property.category).filter(Boolean))];
 
-const PropertySearch = () => (
+  return (
   <section className="relative z-10 -mt-12 px-4 sm:px-6">
     <div className="mx-auto max-w-6xl rounded-3xl border border-brand-secondary/20 bg-white p-4 shadow-soft">
       <div className="grid gap-3 md:grid-cols-[1fr_0.8fr_0.8fr_auto]">
@@ -36,6 +38,7 @@ const PropertySearch = () => (
       </div>
     </div>
   </section>
-);
+  );
+};
 
 export default PropertySearch;

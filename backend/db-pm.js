@@ -1,5 +1,11 @@
 import bcrypt from 'bcryptjs';
 import db from '../db.js';
+import { catalogToDb, propertiesCatalog } from '../shared/propertiesCatalog.js';
+import { catalogToDbLease, leasesCatalog } from '../shared/leasesCatalog.js';
+import {
+  deletePropertyImageFile,
+  persistPropertyImage,
+} from './utils/propertyImages.js';
 
 const now = () => new Date().toISOString();
 
@@ -275,6 +281,14 @@ try {
   db.prepare("ALTER TABLE announcements ADD COLUMN category TEXT DEFAULT 'Company Update'").run();
 } catch {}
 
+try {
+  db.prepare('ALTER TABLE properties ADD COLUMN archived_at TEXT').run();
+} catch {}
+
+try {
+  db.prepare('ALTER TABLE leases ADD COLUMN archived_at TEXT').run();
+} catch {}
+
 const seedRole = db.prepare('INSERT OR IGNORE INTO roles (name, description) VALUES (?, ?)');
 seedRole.run('admin', 'Property management administrator');
 seedRole.run('client', 'Property owner or tenant portal user');
@@ -457,6 +471,9 @@ export function listProperties(filter = {}) {
     clauses.push('(name LIKE ? OR address LIKE ? OR city LIKE ? OR province LIKE ? OR description LIKE ?)');
     values.push(`%${filter.search}%`, `%${filter.search}%`, `%${filter.search}%`, `%${filter.search}%`, `%${filter.search}%`);
   }
+  if (!filter.include_archived) {
+    clauses.push('archived_at IS NULL');
+  }
   if (clauses.length) sql += ` WHERE ${clauses.join(' AND ')}`;
   const sort = {
     area: 'area_sqm DESC',
@@ -466,18 +483,37 @@ export function listProperties(filter = {}) {
     newest: 'created_at DESC',
   }[filter.sort] || 'featured DESC, created_at DESC';
   const properties = db.prepare(`${sql} ORDER BY ${sort}`).all(...values);
-  return properties.map((property) => ({
-    ...property,
-    images: db.prepare('SELECT * FROM property_images WHERE property_id = ? ORDER BY sort_order ASC, id ASC').all(property.id),
-  }));
+  return properties.map((property) => {
+    const images = db.prepare(
+      'SELECT id, property_id, url, alt, sort_order, is_primary FROM property_images WHERE property_id = ? ORDER BY sort_order ASC, id ASC',
+    ).all(property.id);
+    const primary = images.find((image) => image.is_primary) || images[0];
+    const safeImages = primary && primary.url && !String(primary.url).startsWith('data:')
+      ? [primary]
+      : primary
+        ? [{ ...primary, url: null }]
+        : [];
+
+    return {
+      ...property,
+      images: safeImages,
+    };
+  });
 }
 
 export function getPropertyById(id) {
-  return getById('properties', id);
+  const property = getById('properties', id);
+  if (!property) return null;
+  return {
+    ...property,
+    images: db.prepare(
+      'SELECT id, property_id, url, alt, sort_order, is_primary FROM property_images WHERE property_id = ? ORDER BY sort_order ASC, id ASC',
+    ).all(property.id),
+  };
 }
 
 export function getPropertyBySlug(slug) {
-  const property = db.prepare('SELECT * FROM properties WHERE slug = ?').get(slug);
+  const property = db.prepare('SELECT * FROM properties WHERE slug = ? AND archived_at IS NULL').get(slug);
   if (!property) return null;
   return {
     ...property,
@@ -507,9 +543,10 @@ export function createProperty(data) {
 
   const imageUrl = data.image_url || data.image;
   if (imageUrl) {
+    const storedUrl = persistPropertyImage(imageUrl, property.id);
     insert('property_images', {
       property_id: property.id,
-      url: imageUrl,
+      url: storedUrl,
       alt: data.image_alt || property.name,
       sort_order: 0,
       is_primary: 1,
@@ -530,13 +567,17 @@ export function updateProperty(id, data) {
 
   const imageUrl = image_url || image;
   if (property && imageUrl) {
-    const existing = db.prepare('SELECT id FROM property_images WHERE property_id = ? AND is_primary = 1 ORDER BY sort_order ASC, id ASC').get(id);
+    const existing = db.prepare(
+      'SELECT id, url FROM property_images WHERE property_id = ? AND is_primary = 1 ORDER BY sort_order ASC, id ASC',
+    ).get(id);
+    const storedUrl = persistPropertyImage(imageUrl, id);
     if (existing) {
-      db.prepare('UPDATE property_images SET url = ?, alt = ? WHERE id = ?').run(imageUrl, image_alt || property.name, existing.id);
+      if (existing.url !== storedUrl) deletePropertyImageFile(existing.url);
+      db.prepare('UPDATE property_images SET url = ?, alt = ? WHERE id = ?').run(storedUrl, image_alt || property.name, existing.id);
     } else {
       insert('property_images', {
         property_id: id,
-        url: imageUrl,
+        url: storedUrl,
         alt: image_alt || property.name,
         sort_order: 0,
         is_primary: 1,
@@ -548,6 +589,12 @@ export function updateProperty(id, data) {
 }
 
 export function deleteProperty(id) {
+  const property = getById('properties', id);
+  if (!property) return false;
+
+  const images = db.prepare('SELECT url FROM property_images WHERE property_id = ?').all(id);
+  images.forEach((image) => deletePropertyImageFile(image.url));
+
   return removeById('properties', id);
 }
 
@@ -583,11 +630,51 @@ export function deleteUnit(id) {
   return removeById('units', id);
 }
 
+function upsertTenantByName(name, propertyId) {
+  const trimmed = String(name || '').trim();
+  if (!trimmed) return null;
+
+  const existing = db.prepare('SELECT id FROM tenants WHERE name = ? AND (property_id = ? OR property_id IS NULL)').get(trimmed, propertyId ?? null);
+  if (existing) return existing.id;
+
+  const tenant = insert('tenants', {
+    property_id: propertyId ?? null,
+    name: trimmed,
+    status: 'active',
+  });
+  return tenant.id;
+}
+
+function syncPropertyLeaseStatus(propertyId) {
+  if (!propertyId) return;
+  const active = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM leases
+    WHERE property_id = ? AND status = 'active' AND archived_at IS NULL
+  `).get(propertyId);
+  updateById('properties', propertyId, { status: active.count > 0 ? 'leased' : 'available' });
+}
+
+function leaseSelectSql(whereClause = '') {
+  return `
+    SELECT leases.*,
+           properties.name AS property_name,
+           tenants.name AS tenant_name,
+           users.name AS user_name
+    FROM leases
+    LEFT JOIN properties ON properties.id = leases.property_id
+    LEFT JOIN tenants ON tenants.id = leases.tenant_id
+    LEFT JOIN users ON users.id = leases.user_id
+    ${whereClause}
+  `;
+}
+
 export function createLease(data) {
-  return insert('leases', {
+  const tenant_id = data.tenant_id ?? upsertTenantByName(data.tenant_name || data.tenant, data.property_id);
+  const lease = insert('leases', {
     property_id: data.property_id,
     unit_id: data.unit_id ?? null,
-    tenant_id: data.tenant_id ?? null,
+    tenant_id,
     user_id: data.user_id ?? null,
     lease_number: data.lease_number ?? `LSE-${Date.now()}`,
     start_date: data.start_date,
@@ -598,21 +685,15 @@ export function createLease(data) {
     status: data.status ?? 'active',
     terms: data.terms ?? null,
   });
+
+  syncPropertyLeaseStatus(data.property_id);
+  return db.prepare(`${leaseSelectSql('WHERE leases.id = ?')}`).get(lease.id);
 }
 
 export function listLeases(filter = {}) {
-  let sql = `
-    SELECT leases.*,
-           properties.name AS property_name,
-           tenants.name AS tenant_name,
-           users.name AS user_name
-    FROM leases
-    LEFT JOIN properties ON properties.id = leases.property_id
-    LEFT JOIN tenants ON tenants.id = leases.tenant_id
-    LEFT JOIN users ON users.id = leases.user_id
-  `;
+  let sql = leaseSelectSql();
   const values = [];
-  const clauses = [];
+  const clauses = ['leases.archived_at IS NULL', '(properties.archived_at IS NULL OR properties.id IS NULL)'];
   ['property_id', 'unit_id', 'tenant_id', 'user_id', 'status'].forEach((key) => {
     if (filter[key] !== undefined && filter[key] !== '') {
       clauses.push(`leases.${key} = ?`);
@@ -624,15 +705,39 @@ export function listLeases(filter = {}) {
 }
 
 export function getLeaseById(id) {
-  return getById('leases', id);
+  return db.prepare(`${leaseSelectSql('WHERE leases.id = ?')}`).get(id);
 }
 
 export function updateLease(id, data) {
-  return updateById('leases', id, data);
+  const existing = getById('leases', id);
+  if (!existing) return null;
+
+  const tenant_id = data.tenant_id
+    ?? (data.tenant_name || data.tenant ? upsertTenantByName(data.tenant_name || data.tenant, data.property_id ?? existing.property_id) : undefined);
+
+  const { tenant_name, tenant, ...leaseData } = data;
+  updateById('leases', id, {
+    ...leaseData,
+    ...(tenant_id !== undefined ? { tenant_id } : {}),
+  });
+
+  const propertyId = data.property_id ?? existing.property_id;
+  syncPropertyLeaseStatus(propertyId);
+  if (existing.property_id && existing.property_id !== propertyId) {
+    syncPropertyLeaseStatus(existing.property_id);
+  }
+
+  return getLeaseById(id);
 }
 
 export function deleteLease(id) {
-  return removeById('leases', id);
+  const lease = getById('leases', id);
+  if (!lease) return false;
+
+  const propertyId = lease.property_id;
+  const deleted = removeById('leases', id);
+  if (deleted) syncPropertyLeaseStatus(propertyId);
+  return deleted;
 }
 
 export function createPayment(data) {
@@ -666,8 +771,18 @@ export function deletePayment(id) {
   return removeById('payments', id);
 }
 
+function maintenanceSelectSql(whereClause = '') {
+  return `
+    SELECT maintenance_requests.*,
+           properties.name AS property_name
+    FROM maintenance_requests
+    LEFT JOIN properties ON properties.id = maintenance_requests.property_id
+    ${whereClause}
+  `;
+}
+
 export function createMaintenanceRequest(data) {
-  return insert('maintenance_requests', {
+  const request = insert('maintenance_requests', {
     property_id: data.property_id,
     unit_id: data.unit_id ?? null,
     tenant_id: data.tenant_id ?? null,
@@ -680,19 +795,30 @@ export function createMaintenanceRequest(data) {
     completed_at: data.completed_at ?? null,
     cost: data.cost ?? 0,
   });
+  return getMaintenanceRequestById(request.id);
 }
 
 export function listMaintenanceRequests(filter = {}) {
-  const { sql, values } = buildFilters('SELECT * FROM maintenance_requests', filter, ['property_id', 'unit_id', 'tenant_id', 'status', 'priority']);
-  return db.prepare(`${sql} ORDER BY created_at DESC`).all(...values);
+  const clauses = [];
+  const values = [];
+  ['property_id', 'unit_id', 'tenant_id', 'status', 'priority'].forEach((key) => {
+    if (filter[key] !== undefined && filter[key] !== '') {
+      clauses.push(`maintenance_requests.${key} = ?`);
+      values.push(filter[key]);
+    }
+  });
+  const whereClause = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  return db.prepare(`${maintenanceSelectSql(whereClause)} ORDER BY maintenance_requests.created_at DESC`).all(...values);
 }
 
 export function getMaintenanceRequestById(id) {
-  return getById('maintenance_requests', id);
+  return db.prepare(`${maintenanceSelectSql('WHERE maintenance_requests.id = ?')}`).get(id);
 }
 
 export function updateMaintenanceRequest(id, data) {
-  return updateById('maintenance_requests', id, data);
+  const updated = updateById('maintenance_requests', id, data);
+  if (!updated) return null;
+  return getMaintenanceRequestById(id);
 }
 
 export function deleteMaintenanceRequest(id) {
@@ -754,15 +880,86 @@ export function deleteActivityLog(id) {
 export function getAdminDashboardStats() {
   const one = (sql, params = []) => db.prepare(sql).get(...params);
   return {
-    properties: one('SELECT COUNT(*) AS count FROM properties').count,
-    availableProperties: one("SELECT COUNT(*) AS count FROM properties WHERE status = 'available'").count,
+    properties: one('SELECT COUNT(*) AS count FROM properties WHERE archived_at IS NULL').count,
+    availableProperties: one("SELECT COUNT(*) AS count FROM properties WHERE status = 'available' AND archived_at IS NULL").count,
     units: one('SELECT COUNT(*) AS count FROM units').count,
     occupiedUnits: one("SELECT COUNT(*) AS count FROM units WHERE status = 'occupied'").count,
-    activeLeases: one("SELECT COUNT(*) AS count FROM leases WHERE status = 'active'").count,
+    activeLeases: one("SELECT COUNT(*) AS count FROM leases WHERE status = 'active' AND archived_at IS NULL").count,
     openMaintenance: one("SELECT COUNT(*) AS count FROM maintenance_requests WHERE status IN ('open','assigned','in_progress')").count,
     monthlyRevenue: one("SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE status = 'completed' AND payment_date >= date('now', 'start of month')").total,
     recentPayments: db.prepare('SELECT * FROM payments ORDER BY payment_date DESC, created_at DESC LIMIT 10').all(),
     recentMaintenance: db.prepare('SELECT * FROM maintenance_requests ORDER BY created_at DESC LIMIT 10').all(),
+  };
+}
+
+function normalizePropertyMixLabel(type) {
+  const value = String(type || 'commercial').toLowerCase();
+  if (value === 'residential' || value === 'condominium') return 'Residential';
+  if (value === 'industrial' || value === 'warehouse') return 'Industrial';
+  if (value === 'retail') return 'Retail';
+  return 'Commercial';
+}
+
+function getCollectionRate(startExpr, endExpr = null) {
+  const dateClause = endExpr
+    ? `created_at >= ${startExpr} AND created_at < ${endExpr}`
+    : `created_at >= ${startExpr}`;
+  const row = db.prepare(`
+    SELECT
+      COALESCE(SUM(amount), 0) AS total,
+      COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0) AS paid
+    FROM invoices
+    WHERE status != 'void' AND ${dateClause}
+  `).get();
+
+  if (!row?.total) return null;
+  return (row.paid / row.total) * 100;
+}
+
+function getAverageResolutionHours(startExpr, endExpr = null) {
+  const dateClause = endExpr
+    ? `completed_at >= ${startExpr} AND completed_at < ${endExpr}`
+    : `completed_at >= ${startExpr}`;
+  const row = db.prepare(`
+    SELECT AVG((julianday(completed_at) - julianday(created_at)) * 24) AS avg_hours
+    FROM maintenance_requests
+    WHERE status = 'completed'
+      AND completed_at IS NOT NULL
+      AND created_at IS NOT NULL
+      AND ${dateClause}
+  `).get();
+
+  return row?.avg_hours ? Number(row.avg_hours) : null;
+}
+
+export function getAdminAnalyticsStats() {
+  const mixRows = db.prepare(`
+    SELECT type, COUNT(*) AS count
+    FROM properties
+    WHERE archived_at IS NULL
+    GROUP BY type
+  `).all();
+
+  const buckets = new Map();
+  mixRows.forEach((row) => {
+    const label = normalizePropertyMixLabel(row.type);
+    buckets.set(label, (buckets.get(label) || 0) + row.count);
+  });
+
+  const propertyMix = ['Commercial', 'Residential', 'Industrial', 'Retail']
+    .map((type) => ({ type, units: buckets.get(type) || 0 }))
+    .filter((item) => item.units > 0);
+
+  return {
+    propertyMix,
+    avgResolutionHours: {
+      current: getAverageResolutionHours("date('now', 'start of month')"),
+      previous: getAverageResolutionHours("date('now', '-1 month', 'start of month')", "date('now', 'start of month')"),
+    },
+    collectionRate: {
+      current: getCollectionRate("date('now', 'start of month')"),
+      previous: getCollectionRate("date('now', '-1 month', 'start of month')", "date('now', 'start of month')"),
+    },
   };
 }
 
@@ -790,49 +987,167 @@ export function getClientDashboardStats(userId) {
   };
 }
 
+export function cleanupArchivedProperties() {
+  return db.prepare(`
+    DELETE FROM properties
+    WHERE archived_at IS NOT NULL OR slug LIKE '%-archived-%'
+  `).run().changes;
+}
+
+export function cleanupArchivedLeases() {
+  return db.prepare(`
+    DELETE FROM leases
+    WHERE archived_at IS NOT NULL
+  `).run().changes;
+}
+
+export function restorePropertiesCatalog() {
+  const removed = cleanupArchivedProperties();
+  const result = syncPropertiesCatalog({ updateExisting: true });
+  return { removed, ...result };
+}
+
+export function restoreLeasesCatalog() {
+  const removed = cleanupArchivedLeases();
+  const result = syncLeasesCatalog({ updateExisting: true });
+  return { removed, ...result };
+}
+
+export function syncPropertiesCatalog({ updateExisting = true } = {}) {
+  let created = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  const run = db.transaction(() => {
+    for (const item of propertiesCatalog) {
+      const payload = catalogToDb(item);
+      const existing = db.prepare(`
+        SELECT id
+        FROM properties
+        WHERE slug = ? AND archived_at IS NULL
+      `).get(payload.slug);
+      if (existing) {
+        if (!updateExisting) {
+          skipped += 1;
+          continue;
+        }
+        updateProperty(existing.id, payload);
+        updated += 1;
+      } else {
+        createProperty(payload);
+        created += 1;
+      }
+    }
+  });
+
+  run();
+  return { created, updated, skipped, total: propertiesCatalog.length };
+}
+
+export function ensurePropertiesCatalog() {
+  return syncPropertiesCatalog({ updateExisting: false });
+}
+
+export function syncLeasesCatalog({ updateExisting = true } = {}) {
+  let created = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  const run = db.transaction(() => {
+    for (const item of leasesCatalog) {
+      const property = db.prepare('SELECT id FROM properties WHERE slug = ? AND archived_at IS NULL').get(item.property_slug);
+      if (!property) {
+        skipped += 1;
+        continue;
+      }
+
+      const payload = catalogToDbLease(item, property.id);
+      const existing = db.prepare('SELECT id FROM leases WHERE lease_number = ? AND archived_at IS NULL').get(payload.lease_number);
+
+      if (existing) {
+        if (!updateExisting) {
+          skipped += 1;
+          continue;
+        }
+        updateLease(existing.id, payload);
+        updated += 1;
+      } else {
+        createLease(payload);
+        created += 1;
+      }
+    }
+  });
+
+  run();
+  return { created, updated, skipped, total: leasesCatalog.length };
+}
+
+export function seedLeases() {
+  const existing = db.prepare('SELECT COUNT(*) AS count FROM leases WHERE archived_at IS NULL').get().count;
+  if (existing > 0) return { inserted: 0, skipped: true };
+  const result = syncLeasesCatalog({ updateExisting: true });
+  return { inserted: result.created, skipped: false };
+}
+
 export function seedProperties() {
   const existing = db.prepare('SELECT COUNT(*) AS count FROM properties').get().count;
   if (existing > 0) return { inserted: 0, skipped: true };
 
-  const properties = [
-    ['amalgated-corporate-center', 'Amalgated Corporate Center', 'office', 'J.P. Laurel Avenue, Bajada', 'Premium office spaces near Davao business districts.', 145000, 420, 0, 4, 12, ['24/7 security', 'backup power', 'parking']],
-    ['obrero-commercial-hub', 'Obrero Commercial Hub', 'commercial', 'Bo. Obrero, Davao City', 'Street-facing retail and service spaces with strong foot traffic.', 95000, 260, 0, 3, 8, ['storefront', 'CCTV', 'loading area']],
-    ['lanang-executive-suites', 'Lanang Executive Suites', 'residential', 'Lanang, Davao City', 'Furnished executive residences close to airport and malls.', 78000, 110, 3, 2, 2, ['pool', 'gym', 'concierge']],
-    ['matina-garden-residences', 'Matina Garden Residences', 'residential', 'Matina, Davao City', 'Quiet mid-rise residences with landscaped common areas.', 52000, 86, 2, 2, 1, ['garden', 'play area', 'security']],
-    ['davao-logistics-park', 'Davao Logistics Park', 'industrial', 'Bunawan, Davao City', 'Warehouse and logistics lots with truck access.', 210000, 1200, 0, 2, 20, ['loading bays', 'wide roads', 'perimeter fence']],
-    ['ecoland-retail-row', 'Ecoland Retail Row', 'commercial', 'Ecoland Drive, Davao City', 'Compact retail units near transport and residential clusters.', 68000, 155, 0, 2, 5, ['high visibility', 'parking', 'signage']],
-    ['bajada-business-lofts', 'Bajada Business Lofts', 'office', 'Bajada, Davao City', 'Flexible office lofts for growing professional teams.', 88000, 190, 0, 2, 4, ['fiber internet', 'meeting room', 'access control']],
-    ['toril-townhomes', 'Toril Townhomes', 'residential', 'Toril, Davao City', 'Family townhomes with easy access to schools and markets.', 43000, 96, 3, 2, 1, ['gated community', 'parking', 'service area']],
-    ['agdao-marketplace-units', 'Agdao Marketplace Units', 'commercial', 'Agdao, Davao City', 'Affordable commercial units for neighborhood businesses.', 38000, 72, 0, 1, 2, ['market access', 'roll-up doors', 'water line']],
-    ['mintal-student-residences', 'Mintal Student Residences', 'residential', 'Mintal, Davao City', 'Efficient rental residences near university communities.', 26000, 42, 1, 1, 1, ['study lounge', 'laundry area', 'security']],
-    ['maa-professional-plaza', 'Maa Professional Plaza', 'office', 'Maa Road, Davao City', 'Professional clinic and office spaces along a key corridor.', 74000, 150, 0, 2, 4, ['elevator', 'reception lobby', 'parking']],
-    ['cabaguio-storage-compound', 'Cabaguio Storage Compound', 'industrial', 'Cabaguio Avenue, Davao City', 'Secure storage and light industrial compound.', 120000, 680, 0, 2, 10, ['guard house', 'yard space', 'loading access']],
-    ['sasa-airport-commercial', 'Sasa Airport Commercial', 'commercial', 'Sasa, Davao City', 'Commercial spaces serving airport-adjacent traffic.', 82000, 180, 0, 2, 6, ['road frontage', 'parking', 'CCTV']],
-    ['catalunan-grande-villas', 'Catalunan Grande Villas', 'residential', 'Catalunan Grande, Davao City', 'Spacious villas for long-term corporate housing.', 98000, 240, 4, 3, 2, ['garden', 'maid room', 'covered parking']],
-    ['apmc-laurel-showroom', 'APMC Laurel Showroom', 'commercial', 'J.P. Laurel Avenue, Davao City', 'Flagship showroom space for premium brands.', 165000, 350, 0, 3, 10, ['glass frontage', 'high ceiling', 'backup power']],
+  const result = syncPropertiesCatalog();
+  return { inserted: result.created, skipped: false };
+}
+
+export function seedMaintenanceRequests() {
+  const existing = db.prepare('SELECT COUNT(*) AS count FROM maintenance_requests').get().count;
+  if (existing > 0) return { inserted: 0, skipped: true };
+
+  const propertyBySlug = (slug) => db.prepare('SELECT id FROM properties WHERE slug = ?').get(slug);
+  const seeds = [
+    {
+      slug: 'amalgated-paco',
+      title: 'Elevator inspection',
+      description: 'Annual elevator safety inspection and certification for the building lift system.',
+      priority: 'high',
+      status: 'in_progress',
+      assigned_to: 'Facilities Team',
+      scheduled_at: '2026-05-20T09:00:00.000Z',
+    },
+    {
+      slug: 'aci-paragon-plaza-3310',
+      title: 'Water pressure check',
+      description: 'Inspect booster pump performance and verify water pressure across occupied floors.',
+      priority: 'medium',
+      status: 'assigned',
+      assigned_to: 'Plumbing Vendor',
+      scheduled_at: '2026-05-24T14:00:00.000Z',
+    },
+    {
+      slug: 'apokon-commercial-site',
+      title: 'Dock door repair',
+      description: 'Repair loading dock door alignment and replace worn roller hardware.',
+      priority: 'high',
+      status: 'open',
+      assigned_to: 'Ops Team',
+    },
   ];
 
-  const create = db.transaction(() => {
-    properties.forEach(([slug, name, type, address, description, price, area_sqm, bedrooms, bathrooms, parking_slots, amenities], index) => {
-      createProperty({
-        slug,
-        name,
-        type,
-        address,
-        description,
-        price,
-        area_sqm,
-        bedrooms,
-        bathrooms,
-        parking_slots,
-        amenities,
-        featured: index < 5,
-        status: index % 7 === 0 ? 'leased' : 'available',
-      });
+  let inserted = 0;
+  seeds.forEach((seed) => {
+    const property = propertyBySlug(seed.slug);
+    if (!property) return;
+    createMaintenanceRequest({
+      property_id: property.id,
+      title: seed.title,
+      description: seed.description,
+      priority: seed.priority,
+      status: seed.status,
+      assigned_to: seed.assigned_to,
+      scheduled_at: seed.scheduled_at ?? null,
     });
+    inserted += 1;
   });
-  create();
-  return { inserted: properties.length, skipped: false };
+
+  return { inserted, skipped: false };
 }
 
 export function seedAnnouncements() {
@@ -889,8 +1204,34 @@ export function seedDefaultUsers() {
   return { inserted: 2, skipped: false };
 }
 
-seedProperties();
-seedAnnouncements();
-seedDefaultUsers();
+export function seedDatabase({ updateProperties = true, updateLeases = true } = {}) {
+  return {
+    properties: seedProperties(),
+    propertySync: updateProperties
+      ? restorePropertiesCatalog()
+      : ensurePropertiesCatalog(),
+    leases: seedLeases(),
+    leaseSync: updateLeases
+      ? restoreLeasesCatalog()
+      : syncLeasesCatalog({ updateExisting: false }),
+    announcements: seedAnnouncements(),
+    maintenance: seedMaintenanceRequests(),
+    users: seedDefaultUsers(),
+  };
+}
+
+export function bootstrapDatabase() {
+  if (db.prepare('SELECT COUNT(*) AS count FROM properties').get().count === 0) {
+    syncPropertiesCatalog({ updateExisting: true });
+  }
+  if (db.prepare('SELECT COUNT(*) AS count FROM leases').get().count === 0) {
+    syncLeasesCatalog({ updateExisting: true });
+  }
+  seedAnnouncements();
+  seedMaintenanceRequests();
+  seedDefaultUsers();
+}
+
+bootstrapDatabase();
 
 export default db;

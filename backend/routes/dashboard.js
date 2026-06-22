@@ -1,11 +1,37 @@
 import express from 'express';
-import { getAdminDashboardStats, getClientDashboardStats, listActivityLogs } from '../db-pm.js';
+import { getLeadAnalytics } from '../../db.js';
+import { getAdminAnalyticsStats, getAdminDashboardStats, getClientDashboardStats, listActivityLogs } from '../db-pm.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
 router.get('/admin', requireAuth, requireRole('admin'), (_req, res) => {
+  res.set('Cache-Control', 'no-store');
   res.json(getAdminDashboardStats());
+});
+
+router.get('/analytics', requireAuth, requireRole('admin'), (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+
+  const portfolio = getAdminAnalyticsStats();
+  let leads = {
+    websiteLeads: { current: 0, previous: 0 },
+    tourConversion: { current: 0, previous: 0 },
+  };
+
+  try {
+    leads = getLeadAnalytics();
+  } catch {
+    // Visitor/lead database may be unavailable in some environments.
+  }
+
+  res.json({
+    propertyMix: portfolio.propertyMix,
+    websiteLeads: leads.websiteLeads,
+    tourConversion: leads.tourConversion,
+    avgResolutionHours: portfolio.avgResolutionHours,
+    collectionRate: portfolio.collectionRate,
+  });
 });
 
 router.get('/client', requireAuth, requireRole('client', 'admin'), (req, res) => {

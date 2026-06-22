@@ -356,25 +356,10 @@ const tableStatements = [
 const migrationStatements = [
   "ALTER TABLE announcements ADD COLUMN excerpt TEXT",
   "ALTER TABLE announcements ADD COLUMN category VARCHAR(120) DEFAULT 'Company Update'",
+  'ALTER TABLE properties ADD COLUMN archived_at TIMESTAMP NULL DEFAULT NULL',
 ];
 
-const sampleProperties = [
-  ['amalgated-corporate-center', 'Amalgated Corporate Center', 'office', 'J.P. Laurel Avenue, Bajada', 'Premium office spaces near Davao business districts.', 145000, 420, 0, 4, 12, ['24/7 security', 'backup power', 'parking']],
-  ['obrero-commercial-hub', 'Obrero Commercial Hub', 'commercial', 'Bo. Obrero, Davao City', 'Street-facing retail and service spaces with strong foot traffic.', 95000, 260, 0, 3, 8, ['storefront', 'CCTV', 'loading area']],
-  ['lanang-executive-suites', 'Lanang Executive Suites', 'residential', 'Lanang, Davao City', 'Furnished executive residences close to airport and malls.', 78000, 110, 3, 2, 2, ['pool', 'gym', 'concierge']],
-  ['matina-garden-residences', 'Matina Garden Residences', 'residential', 'Matina, Davao City', 'Quiet mid-rise residences with landscaped common areas.', 52000, 86, 2, 2, 1, ['garden', 'play area', 'security']],
-  ['davao-logistics-park', 'Davao Logistics Park', 'industrial', 'Bunawan, Davao City', 'Warehouse and logistics lots with truck access.', 210000, 1200, 0, 2, 20, ['loading bays', 'wide roads', 'perimeter fence']],
-  ['ecoland-retail-row', 'Ecoland Retail Row', 'commercial', 'Ecoland Drive, Davao City', 'Compact retail units near transport and residential clusters.', 68000, 155, 0, 2, 5, ['high visibility', 'parking', 'signage']],
-  ['bajada-business-lofts', 'Bajada Business Lofts', 'office', 'Bajada, Davao City', 'Flexible office lofts for growing professional teams.', 88000, 190, 0, 2, 4, ['fiber internet', 'meeting room', 'access control']],
-  ['toril-townhomes', 'Toril Townhomes', 'residential', 'Toril, Davao City', 'Family townhomes with easy access to schools and markets.', 43000, 96, 3, 2, 1, ['gated community', 'parking', 'service area']],
-  ['agdao-marketplace-units', 'Agdao Marketplace Units', 'commercial', 'Agdao, Davao City', 'Affordable commercial units for neighborhood businesses.', 38000, 72, 0, 1, 2, ['market access', 'roll-up doors', 'water line']],
-  ['mintal-student-residences', 'Mintal Student Residences', 'residential', 'Mintal, Davao City', 'Efficient rental residences near university communities.', 26000, 42, 1, 1, 1, ['study lounge', 'laundry area', 'security']],
-  ['maa-professional-plaza', 'Maa Professional Plaza', 'office', 'Maa Road, Davao City', 'Professional clinic and office spaces along a key corridor.', 74000, 150, 0, 2, 4, ['elevator', 'reception lobby', 'parking']],
-  ['cabaguio-storage-compound', 'Cabaguio Storage Compound', 'industrial', 'Cabaguio Avenue, Davao City', 'Secure storage and light industrial compound.', 120000, 680, 0, 2, 10, ['guard house', 'yard space', 'loading access']],
-  ['sasa-airport-commercial', 'Sasa Airport Commercial', 'commercial', 'Sasa, Davao City', 'Commercial spaces serving airport-adjacent traffic.', 82000, 180, 0, 2, 6, ['road frontage', 'parking', 'CCTV']],
-  ['catalunan-grande-villas', 'Catalunan Grande Villas', 'residential', 'Catalunan Grande, Davao City', 'Spacious villas for long-term corporate housing.', 98000, 240, 4, 3, 2, ['garden', 'maid room', 'covered parking']],
-  ['apmc-laurel-showroom', 'APMC Laurel Showroom', 'commercial', 'J.P. Laurel Avenue, Davao City', 'Flagship showroom space for premium brands.', 165000, 350, 0, 3, 10, ['glass frontage', 'high ceiling', 'backup power']],
-];
+import { catalogToDb, propertiesCatalog } from '../shared/propertiesCatalog.js';
 
 const sampleAnnouncements = [
   [
@@ -430,26 +415,26 @@ async function seedData(connection) {
 
   const [[propertyCount]] = await connection.execute('SELECT COUNT(*) AS count FROM properties');
   if (propertyCount.count === 0) {
-    for (const [index, property] of sampleProperties.entries()) {
-      const [slug, name, type, address, description, price, area, bedrooms, bathrooms, parking, amenities] = property;
+    for (const item of propertiesCatalog) {
+      const property = catalogToDb(item);
       await connection.execute(
         `INSERT INTO properties
-          (slug, name, type, status, address, description, price, area_sqm, bedrooms, bathrooms, parking_slots, amenities, featured)
+          (slug, name, type, status, address, city, province, description, price, area_sqm, bedrooms, amenities, featured)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          slug,
-          name,
-          type,
-          index % 7 === 0 ? 'leased' : 'available',
-          address,
-          description,
-          price,
-          area,
-          bedrooms,
-          bathrooms,
-          parking,
-          JSON.stringify(amenities),
-          index < 5 ? 1 : 0,
+          property.slug,
+          property.name,
+          property.type,
+          property.status,
+          property.address,
+          property.city,
+          property.province,
+          property.description,
+          property.price,
+          property.area_sqm,
+          property.bedrooms,
+          JSON.stringify(property.amenities),
+          property.featured ? 1 : 0,
         ]
       );
     }

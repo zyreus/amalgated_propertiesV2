@@ -7,11 +7,13 @@ const router = express.Router();
 router.use(requireAuth);
 
 router.get('/', (req, res) => {
+  res.set('Cache-Control', 'no-store');
   const filter = req.user.role === 'client' ? { ...req.query, user_id: req.user.id } : req.query;
   res.json(listLeases(filter));
 });
 
 router.get('/:id', (req, res) => {
+  res.set('Cache-Control', 'no-store');
   const lease = getLeaseById(Number(req.params.id));
   if (!lease) return res.status(404).json({ ok: false, message: 'Lease not found' });
   if (req.user.role === 'client' && lease.user_id !== req.user.id) {

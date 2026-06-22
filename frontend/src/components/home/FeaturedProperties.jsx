@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, BedDouble, Ruler } from 'lucide-react';
 import { useProperties } from '../../hooks/useProperties.js';
 
 const FeaturedProperties = () => {
-  const { properties, loading } = useProperties({ featured: 1 });
-  const featuredProperties = properties.filter((property) => property.featured).slice(0, 6);
+  const { properties, loading } = useProperties();
+  const featuredProperties = useMemo(
+    () => properties.filter((property) => property.featured).slice(0, 6),
+    [properties],
+  );
 
   return (
   <section className="bg-white py-16 sm:py-24 dark:bg-brand-surface-dark">
@@ -26,6 +29,9 @@ const FeaturedProperties = () => {
       <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {loading && (
           <p className="col-span-full text-center text-sm text-brand-text-muted">Loading featured properties…</p>
+        )}
+        {!loading && featuredProperties.length === 0 && (
+          <p className="col-span-full text-center text-sm text-brand-text-muted">No featured properties yet.</p>
         )}
         {featuredProperties.map((property) => (
           <Link

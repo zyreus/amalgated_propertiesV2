@@ -13,10 +13,18 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 const router = express.Router();
 
 router.get('/', (req, res) => {
+  res.set('Cache-Control', 'no-store');
   res.json(listProperties(req.query));
 });
 
+router.get('/admin/:id', requireAuth, requireRole('admin'), (req, res) => {
+  const property = getPropertyById(Number(req.params.id));
+  if (!property) return res.status(404).json({ ok: false, message: 'Property not found' });
+  return res.json(property);
+});
+
 router.get('/:slug', (req, res) => {
+  res.set('Cache-Control', 'no-store');
   const property = getPropertyBySlug(req.params.slug);
   if (!property) return res.status(404).json({ ok: false, message: 'Property not found' });
   return res.json(property);
@@ -30,12 +38,6 @@ router.post('/', requireAuth, requireRole('admin'), (req, res) => {
   } catch (err) {
     return res.status(400).json({ ok: false, message: err.message });
   }
-});
-
-router.get('/admin/:id', requireAuth, requireRole('admin'), (req, res) => {
-  const property = getPropertyById(Number(req.params.id));
-  if (!property) return res.status(404).json({ ok: false, message: 'Property not found' });
-  return res.json(property);
 });
 
 router.patch('/:id', requireAuth, requireRole('admin'), (req, res) => {

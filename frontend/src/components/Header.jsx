@@ -19,17 +19,17 @@ const Header = () => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-brand-primary/10 bg-white/95 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4">
-        <Link to="/" className="flex shrink-0 items-center gap-3 transition hover:opacity-90">
+        <Link to="/" className="flex min-w-0 items-center gap-2 transition hover:opacity-90 sm:gap-3">
           <img
             src={logo}
             alt="Amalgated Properties &amp; Management Corporation"
-            className="h-11 w-11 object-contain sm:h-12 sm:w-12"
+            className="h-11 w-11 shrink-0 object-contain sm:h-12 sm:w-12"
           />
-          <span className="hidden flex-col leading-tight sm:flex sm:flex-col">
-            <span className="text-sm font-semibold tracking-wide text-brand-text">
+          <span className="flex min-w-0 flex-col leading-tight">
+            <span className="truncate text-xs font-semibold tracking-wide text-brand-text sm:text-sm">
               Amalgated Properties
             </span>
-            <span className="text-xs text-brand-text/70">
+            <span className="truncate text-[10px] text-brand-text/70 sm:text-xs">
               Management Corporation
             </span>
           </span>

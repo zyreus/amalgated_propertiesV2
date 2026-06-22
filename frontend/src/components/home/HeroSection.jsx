@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Building2, MapPinned } from 'lucide-react';
+import heroImage from '../../assets/hero-lease-signings.png';
 
 const HeroSection = () => (
   <section className="relative overflow-hidden bg-brand-primary text-white">
@@ -44,8 +45,8 @@ const HeroSection = () => (
       >
         <div className="overflow-hidden rounded-[2rem] border border-white/15 bg-white/10 p-3 shadow-2xl backdrop-blur">
           <img
-            src="https://images.pexels.com/photos/325229/pexels-photo-325229.jpeg?auto=compress&cs=tinysrgb&w=1400"
-            alt="Premium commercial building"
+            src={heroImage}
+            alt="Long-term lease contract signings with UCPB and EastWest Bank"
             className="h-[460px] w-full rounded-[1.5rem] object-cover"
           />
         </div>

@@ -206,6 +206,42 @@ export function getLeads(filter = {}) {
   return rows;
 }
 
+function leadsInRange(leads, start, end) {
+  return leads.filter((lead) => {
+    const createdAt = new Date(lead.created_at);
+    return !Number.isNaN(createdAt.getTime()) && createdAt >= start && createdAt < end;
+  });
+}
+
+function leadConversionRate(leads) {
+  if (!leads.length) return 0;
+  const converted = leads.filter((lead) => ['qualified', 'converted'].includes(lead.status)).length;
+  return (converted / leads.length) * 100;
+}
+
+export function getLeadAnalytics() {
+  const leads = stmts.getLeads.all();
+  const now = new Date();
+  const currentStart = new Date(now);
+  currentStart.setDate(now.getDate() - 30);
+  const previousStart = new Date(now);
+  previousStart.setDate(now.getDate() - 60);
+
+  const currentLeads = leadsInRange(leads, currentStart, now);
+  const previousLeads = leadsInRange(leads, previousStart, currentStart);
+
+  return {
+    websiteLeads: {
+      current: currentLeads.length,
+      previous: previousLeads.length,
+    },
+    tourConversion: {
+      current: leadConversionRate(currentLeads),
+      previous: leadConversionRate(previousLeads),
+    },
+  };
+}
+
 export function getLeadById(id) {
   return stmts.getLeadById.get(id);
 }

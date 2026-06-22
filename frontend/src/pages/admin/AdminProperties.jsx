@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pencil, Plus, X } from 'lucide-react';
-import { adminTables } from '../../data/mockPortal.js';
+import { Pencil, Plus, Trash2, X } from 'lucide-react';
 import useApi from '../../hooks/useApi.js';
+import { clearPropertiesCache } from '../../utils/propertyCache.js';
 
 const initialForm = {
   name: '',
@@ -17,14 +17,6 @@ const initialForm = {
   image_url: '',
   featured: false,
 };
-
-function clearPropertiesCache() {
-  if (typeof window === 'undefined') return;
-
-  Object.keys(localStorage)
-    .filter((key) => key.startsWith('api-cache:/api/pm/properties'))
-    .forEach((key) => localStorage.removeItem(key));
-}
 
 function formatStatus(status) {
   if (!status) return 'Available';
@@ -42,12 +34,10 @@ function formatPrice(price) {
 }
 
 function mapAdminProperty(row) {
-  if (row.location) return { ...row, source: row };
-
   return {
     id: row.id,
     name: row.name,
-    type: row.type ? formatStatus(row.type) : 'Property',
+    type: row.type ? (String(row.type).toLowerCase() === 'lot' ? 'LOT' : formatStatus(row.type)) : 'Property',
     location: [row.address, row.city].filter(Boolean).join(', ') || row.province || 'Location pending',
     occupancy: row.status === 'leased' ? '100%' : '0%',
     revenue: formatPrice(row.price),
@@ -69,7 +59,7 @@ function readImageFile(file) {
   });
 }
 
-async function compressImageFile(file, { maxDimension = 1600, quality = 0.85 } = {}) {
+async function compressImageFile(file, { maxDimension = 1200, quality = 0.8 } = {}) {
   if (!file.type.startsWith('image/')) {
     throw new Error('Please choose an image file.');
   }
@@ -114,13 +104,16 @@ function propertyToForm(property) {
 export default function AdminProperties() {
   const [token] = useState(() => (typeof window === 'undefined' ? null : localStorage.getItem('admin_token')));
   const api = useApi(token);
-  const [properties, setProperties] = useState(adminTables.properties);
+  const [properties, setProperties] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [showForm, setShowForm] = useState(false);
   const [editingProperty, setEditingProperty] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [message, setMessage] = useState('');
+  const [imageProcessing, setImageProcessing] = useState(false);
 
   const rows = useMemo(() => properties.map(mapAdminProperty), [properties]);
 
@@ -128,17 +121,40 @@ export default function AdminProperties() {
     setLoading(true);
     api.get('/properties')
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) setProperties(data);
+        if (Array.isArray(data)) setProperties(data);
       })
       .catch(() => {
-        setProperties(adminTables.properties);
+        setProperties([]);
       })
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
     loadProperties();
+    const onUpdate = () => loadProperties();
+    window.addEventListener('properties-updated', onUpdate);
+    return () => window.removeEventListener('properties-updated', onUpdate);
   }, [api]);
+
+  useEffect(() => {
+    if (!showForm && !deleteTarget) return undefined;
+
+    const handleEscape = (event) => {
+      if (event.key !== 'Escape') return;
+      if (deleteTarget && !deletingId) {
+        setDeleteTarget(null);
+        setMessage('');
+      } else if (showForm && !saving) closeForm();
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [showForm, deleteTarget, deletingId, saving]);
 
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -151,16 +167,24 @@ export default function AdminProperties() {
     setShowForm(true);
   };
 
-  const openEditForm = (property) => {
+  const openEditForm = async (property) => {
     if (!property?.id) {
       setMessage('This property cannot be edited until the API data is available.');
       return;
     }
 
-    setEditingProperty(property);
-    setForm(propertyToForm(property));
     setMessage('');
     setShowForm(true);
+    setEditingProperty(property);
+    setForm(propertyToForm(property));
+
+    try {
+      const full = await api.get(`/properties/admin/${property.id}`);
+      setEditingProperty(full);
+      setForm(propertyToForm(full));
+    } catch {
+      // Keep the list row data if the detail request fails.
+    }
   };
 
   const closeForm = () => {
@@ -176,12 +200,18 @@ export default function AdminProperties() {
       return;
     }
 
+    setImageProcessing(true);
+    setMessage('');
+
     try {
       const imageUrl = await compressImageFile(file);
       updateField('image_url', imageUrl);
     } catch (error) {
       setMessage(error.message || 'Unable to process the selected image.');
       updateField('image_url', '');
+    } finally {
+      setImageProcessing(false);
+      event.target.value = '';
     }
   };
 
@@ -213,6 +243,7 @@ export default function AdminProperties() {
       }
 
       clearPropertiesCache();
+      window.dispatchEvent(new Event('properties-updated'));
       setForm(initialForm);
       setShowForm(false);
       setEditingProperty(null);
@@ -227,6 +258,40 @@ export default function AdminProperties() {
     }
   };
 
+  const handleDelete = (property) => {
+    if (!property?.id) {
+      setMessage('This property cannot be deleted until the API data is available.');
+      return;
+    }
+
+    setMessage('');
+    setDeleteTarget(property);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget?.id) return;
+
+    setDeletingId(deleteTarget.id);
+    setMessage('');
+
+    try {
+      await api.delete(`/properties/${deleteTarget.id}`);
+      clearPropertiesCache();
+
+      if (editingProperty?.id === deleteTarget.id) {
+        closeForm();
+      }
+
+      setDeleteTarget(null);
+      setMessage('Property deleted permanently.');
+      loadProperties();
+    } catch (error) {
+      setMessage(error.message || 'Unable to delete property.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -238,32 +303,43 @@ export default function AdminProperties() {
           <Plus className="h-4 w-4" /> Add Property
         </button>
       </div>
-      {message && (
+      {message && !showForm && !deleteTarget && (
         <p className="rounded-2xl bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-primary dark:bg-brand-800/40 dark:text-brand-accent">
           {message}
         </p>
       )}
       {showForm && (
-        <div className="glass-card p-5">
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-bold text-brand-primary dark:text-white">
-                {editingProperty ? 'Edit Website Property' : 'Add Website Property'}
-              </h3>
-              <p className="text-sm text-brand-text-muted dark:text-slate-400">
-                Properties are saved to the website listings API.
-              </p>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="property-form-title"
+        >
+          <div className="glass-card max-h-[90vh] w-full max-w-4xl overflow-y-auto p-5 shadow-xl">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div>
+                <h3 id="property-form-title" className="text-lg font-bold text-brand-primary dark:text-white">
+                  {editingProperty ? 'Edit Website Property' : 'Add Website Property'}
+                </h3>
+                <p className="text-sm text-brand-text-muted dark:text-slate-400">
+                  Properties are saved to the website listings API.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeForm}
+                className="rounded-full p-2 text-brand-primary hover:bg-brand-50 dark:text-brand-accent dark:hover:bg-brand-800/50"
+                aria-label="Close property form"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={closeForm}
-              className="rounded-full p-2 text-brand-primary hover:bg-brand-50 dark:text-brand-accent dark:hover:bg-brand-800/50"
-              aria-label="Close add property form"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-          <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+            {message && showForm && (
+              <p className="mb-4 rounded-2xl bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-primary dark:bg-brand-800/40 dark:text-brand-accent">
+                {message}
+              </p>
+            )}
+            <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-brand-text dark:text-slate-300">Property Name</span>
               <input
@@ -285,6 +361,7 @@ export default function AdminProperties() {
                 <option value="residential">Residential</option>
                 <option value="industrial">Industrial</option>
                 <option value="condominium">Condominium</option>
+                <option value="lot">LOT</option>
               </select>
             </label>
             <label className="block md:col-span-2">
@@ -360,9 +437,13 @@ export default function AdminProperties() {
               <input
                 type="file"
                 accept="image/*"
+                disabled={imageProcessing || saving}
                 onChange={handlePictureChange}
-                className="w-full rounded-xl border border-brand-200 bg-white px-4 py-3 text-sm outline-none transition file:mr-4 file:rounded-full file:border-0 file:bg-brand-primary file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-primary-hover focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 dark:border-brand-700 dark:bg-brand-surface-dark dark:text-white"
+                className="w-full rounded-xl border border-brand-200 bg-white px-4 py-3 text-sm outline-none transition file:mr-4 file:rounded-full file:border-0 file:bg-brand-primary file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-primary-hover focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:opacity-60 dark:border-brand-700 dark:bg-brand-surface-dark dark:text-white"
               />
+              {imageProcessing && (
+                <p className="mt-2 text-sm text-brand-text-muted dark:text-slate-400">Processing image...</p>
+              )}
               {form.image_url && (
                 <img
                   src={form.image_url}
@@ -393,11 +474,58 @@ export default function AdminProperties() {
               <button type="button" onClick={closeForm} className="btn-outline">
                 Cancel
               </button>
-              <button disabled={saving} className="btn-primary disabled:opacity-60" type="submit">
+              <button disabled={saving || imageProcessing} className="btn-primary disabled:opacity-60" type="submit">
                 {saving ? 'Saving...' : editingProperty ? 'Update Property' : 'Save Property'}
               </button>
             </div>
-          </form>
+            </form>
+          </div>
+        </div>
+      )}
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-property-title"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-brand-surface-dark">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/50">
+              <Trash2 className="h-6 w-6 text-red-600" />
+            </div>
+            <h3 id="delete-property-title" className="text-lg font-bold text-brand-primary dark:text-white">
+              Delete property
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-brand-text-muted dark:text-slate-400">
+              Delete <span className="font-semibold text-brand-primary dark:text-white">"{deleteTarget.name}"</span>? This permanently removes it from the website and admin. It will not come back after refresh.
+            </p>
+            {message && (
+              <p className="mt-3 rounded-xl bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                {message}
+              </p>
+            )}
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteTarget(null);
+                  setMessage('');
+                }}
+                disabled={Boolean(deletingId)}
+                className="btn-outline flex-1 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={Boolean(deletingId)}
+                className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+              >
+                {deletingId ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
       <div className="glass-card overflow-hidden">
@@ -407,8 +535,15 @@ export default function AdminProperties() {
               <tr>{['Property', 'Type', 'Location', 'Occupancy', 'Revenue', 'Status', 'Actions'].map((head) => <th key={head} className="px-5 py-3">{head}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-brand-100 dark:divide-brand-700/50">
-              {rows.map((row) => (
-                <tr key={row.id || row.name} className="hover:bg-brand-50/70 dark:hover:bg-brand-800/30">
+              {loading && (
+                <tr>
+                  <td className="px-5 py-8 text-center text-brand-text-muted dark:text-slate-400" colSpan={7}>
+                    Loading properties...
+                  </td>
+                </tr>
+              )}
+              {!loading && rows.map((row) => (
+                <tr key={row.id} className="hover:bg-brand-50/70 dark:hover:bg-brand-800/30">
                   <td className="px-5 py-4 font-semibold text-brand-primary dark:text-white">{row.name}</td>
                   <td className="px-5 py-4">{row.type}</td>
                   <td className="px-5 py-4 text-brand-text-muted dark:text-slate-400">{row.location}</td>
@@ -416,15 +551,26 @@ export default function AdminProperties() {
                   <td className="px-5 py-4 font-semibold">{row.revenue}</td>
                   <td className="px-5 py-4"><span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">{row.status}</span></td>
                   <td className="px-5 py-4">
-                    <button
-                      type="button"
-                      onClick={() => openEditForm(row.source)}
-                      className="inline-flex items-center gap-1 rounded-full border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-primary transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-brand-700 dark:text-brand-accent dark:hover:bg-brand-800/50"
-                      disabled={!row.source?.id}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                      Edit
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openEditForm(row.source)}
+                        className="inline-flex items-center gap-1 rounded-full border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-primary transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-brand-700 dark:text-brand-accent dark:hover:bg-brand-800/50"
+                        disabled={!row.source?.id}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(row.source)}
+                        className="inline-flex items-center gap-1 rounded-full border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/60 dark:hover:bg-red-950/40"
+                        disabled={!row.source?.id || deletingId === row.source.id}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        {deletingId === row.source?.id ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -437,9 +583,6 @@ export default function AdminProperties() {
               )}
             </tbody>
           </table>
-          {loading && (
-            <p className="px-5 py-4 text-sm text-brand-text-muted dark:text-slate-400">Loading properties...</p>
-          )}
         </div>
       </div>
     </div>

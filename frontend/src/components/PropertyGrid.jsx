@@ -179,7 +179,7 @@ const PropertyGrid = () => {
                   <span>{property.price}</span>
                   <span className="inline-flex items-center gap-1">
                     <Ruler className="h-3.5 w-3.5 text-brand-primary" />
-                    {property.sqft} sqm
+                    {property.sqft} sqft
                   </span>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">

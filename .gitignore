@@ -7,3 +7,5 @@ chat.db-shm
 chat.db-wal
 feedback.json
 .pm2/
+uploads/properties/*
+!uploads/properties/.gitkeep

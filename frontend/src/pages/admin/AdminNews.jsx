@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pencil, Plus, X } from 'lucide-react';
+import { Pencil, Plus, Trash2, X } from 'lucide-react';
 import useApi, { apiRequest } from '../../hooks/useApi.js';
 import { NEWS_UPDATED_EVENT } from '../../hooks/useNews.js';
 
@@ -90,6 +90,8 @@ export default function AdminNews() {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [message, setMessage] = useState('');
 
   const rows = useMemo(() => items.map(normalizeRow), [items]);
@@ -114,6 +116,26 @@ export default function AdminNews() {
   useEffect(() => {
     loadNews();
   }, [api]);
+
+  useEffect(() => {
+    if (!showForm && !deleteTarget) return undefined;
+
+    const handleEscape = (event) => {
+      if (event.key !== 'Escape') return;
+      if (deleteTarget && !deletingId) {
+        setDeleteTarget(null);
+        setMessage('');
+      } else if (showForm && !saving) closeForm();
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [showForm, deleteTarget, deletingId, saving]);
 
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -174,6 +196,40 @@ export default function AdminNews() {
     }
   };
 
+  const handleDelete = (item) => {
+    if (!item?.id) {
+      setMessage('This news item cannot be deleted until the API data is available.');
+      return;
+    }
+
+    setMessage('');
+    setDeleteTarget(item);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget?.id) return;
+
+    setDeletingId(deleteTarget.id);
+    setMessage('');
+
+    try {
+      await api.delete(`/announcements/${deleteTarget.id}`);
+      clearNewsCache();
+
+      if (editingItem?.id === deleteTarget.id) {
+        closeForm();
+      }
+
+      setDeleteTarget(null);
+      setMessage('News deleted permanently. It will no longer appear on the website.');
+      loadNews();
+    } catch (error) {
+      setMessage(error.message || 'Unable to delete news.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -186,7 +242,7 @@ export default function AdminNews() {
         </button>
       </div>
 
-      {message && (
+      {message && !showForm && !deleteTarget && (
         <p className="rounded-2xl bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-primary dark:bg-brand-800/40 dark:text-brand-accent">
           {message}
         </p>
@@ -283,6 +339,53 @@ export default function AdminNews() {
         </div>
       )}
 
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-news-title"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-brand-surface-dark">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/50">
+              <Trash2 className="h-6 w-6 text-red-600" />
+            </div>
+            <h3 id="delete-news-title" className="text-lg font-bold text-brand-primary dark:text-white">
+              Delete news
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-brand-text-muted dark:text-slate-400">
+              Delete <span className="font-semibold text-brand-primary dark:text-white">"{deleteTarget.title}"</span>? This permanently removes it from the website and admin. It will not come back after refresh.
+            </p>
+            {message && (
+              <p className="mt-3 rounded-xl bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                {message}
+              </p>
+            )}
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteTarget(null);
+                  setMessage('');
+                }}
+                disabled={Boolean(deletingId)}
+                className="btn-outline flex-1 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={Boolean(deletingId)}
+                className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+              >
+                {deletingId ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="glass-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
@@ -302,14 +405,25 @@ export default function AdminNews() {
                     <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">{row.statusLabel}</span>
                   </td>
                   <td className="px-5 py-4">
-                    <button
-                      type="button"
-                      onClick={() => openEditForm(row)}
-                      className="inline-flex items-center gap-1 rounded-full border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-primary transition hover:bg-brand-50 dark:border-brand-700 dark:text-brand-accent dark:hover:bg-brand-800/50"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                      Edit
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openEditForm(row)}
+                        className="inline-flex items-center gap-1 rounded-full border border-brand-200 px-3 py-1.5 text-xs font-semibold text-brand-primary transition hover:bg-brand-50 dark:border-brand-700 dark:text-brand-accent dark:hover:bg-brand-800/50"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(row)}
+                        className="inline-flex items-center gap-1 rounded-full border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/60 dark:hover:bg-red-950/40"
+                        disabled={!row.id || deletingId === row.id}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        {deletingId === row.id ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

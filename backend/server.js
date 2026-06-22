@@ -14,6 +14,7 @@ import { fileURLToPath } from 'url';
 import db from '../db.js';
 import { mountRoutes } from './app-routes.js';
 import { rateLimit, securityHeaders } from './middleware/auth.js';
+import { ensurePropertyUploadsDir } from './utils/propertyImages.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import {
@@ -46,6 +47,8 @@ app.use(securityHeaders());
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+ensurePropertyUploadsDir();
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 mountRoutes(app, io);
 
 // ── Email (Contact form) ──

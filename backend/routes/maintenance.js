@@ -20,10 +20,12 @@ function clientFilter(req) {
 }
 
 router.get('/', (req, res) => {
+  res.set('Cache-Control', 'no-store');
   res.json(listMaintenanceRequests(clientFilter(req)));
 });
 
 router.get('/:id', (req, res) => {
+  res.set('Cache-Control', 'no-store');
   const request = getMaintenanceRequestById(Number(req.params.id));
   if (!request) return res.status(404).json({ ok: false, message: 'Maintenance request not found' });
   if (req.user.role === 'client' && request.property_id !== req.user.property_id) {

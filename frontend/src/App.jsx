@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Outlet, Routes, Route, useNavigate } from 'rea
 import Layout from './components/Layout.jsx';
 import SplashScreen from './components/SplashScreen.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
+import { PropertiesProvider } from './context/PropertiesContext.jsx';
 import HomePage from './pages/HomePage.jsx';
 import AboutPage from './pages/AboutPage.jsx';
 import ServicesPage from './pages/ServicesPage.jsx';
@@ -118,7 +119,7 @@ const App = () => {
       <ThemeProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Layout />}>
+            <Route path="/" element={<PropertiesProvider><Layout /></PropertiesProvider>}>
               <Route index element={<HomePage />} />
               <Route path="about" element={<AboutPage />} />
               <Route path="company" element={<AboutPage />} />

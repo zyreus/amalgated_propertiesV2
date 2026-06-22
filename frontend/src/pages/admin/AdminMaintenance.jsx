@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pencil, Trash2, Wrench, X } from 'lucide-react';
-import { adminTables } from '../../data/mockPortal.js';
 import useApi from '../../hooks/useApi.js';
 
 const initialForm = {
@@ -38,23 +37,21 @@ function formatDateTime(value) {
 
 function formatDateTimeInput(value) {
   if (!value) return '';
-  return String(value).replace(' ', 'T').slice(0, 16);
+  const normalized = String(value).includes('T') ? String(value) : String(value).replace(' ', 'T');
+  return normalized.slice(0, 16);
 }
 
-function getPriorityClass(priority) {
-  if (priority === 'urgent') return 'bg-red-100 text-red-700';
-  if (priority === 'high') return 'bg-amber-100 text-amber-700';
-  if (priority === 'low') return 'bg-slate-100 text-slate-700';
-  return 'bg-brand-100 text-brand-primary dark:bg-brand-800 dark:text-brand-accent';
+function resolvePropertyName(row, propertyNames) {
+  if (row.property_name) return row.property_name;
+  const propertyId = Number(row.property_id);
+  return propertyNames.get(propertyId) || propertyNames.get(row.property_id) || `Property #${row.property_id}`;
 }
 
 function mapMaintenanceRequest(row, propertyNames) {
-  if (row.ticket) return { ...row, source: row };
-
   return {
     id: row.id,
     ticket: `MNT-${String(row.id).padStart(4, '0')}`,
-    property: propertyNames.get(row.property_id) || `Property #${row.property_id}`,
+    property: resolvePropertyName(row, propertyNames),
     issue: row.title,
     priority: formatStatus(row.priority),
     priorityValue: row.priority,
@@ -63,6 +60,14 @@ function mapMaintenanceRequest(row, propertyNames) {
     status: formatStatus(row.status),
     source: row,
   };
+}
+
+function getPriorityClass(priority) {
+  const value = String(priority || 'medium').toLowerCase();
+  if (value === 'urgent') return 'bg-red-100 text-red-700';
+  if (value === 'high') return 'bg-amber-100 text-amber-700';
+  if (value === 'low') return 'bg-slate-100 text-slate-700';
+  return 'bg-brand-100 text-brand-primary dark:bg-brand-800 dark:text-brand-accent';
 }
 
 function requestToForm(request) {
@@ -82,32 +87,30 @@ function requestToForm(request) {
 export default function AdminMaintenance() {
   const [token] = useState(() => (typeof window === 'undefined' ? null : localStorage.getItem('admin_token')));
   const api = useApi(token);
-  const [requests, setRequests] = useState(adminTables.maintenance);
+  const [requests, setRequests] = useState([]);
   const [properties, setProperties] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [showForm, setShowForm] = useState(false);
   const [editingRequest, setEditingRequest] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [message, setMessage] = useState('');
-  const [usingSampleData, setUsingSampleData] = useState(true);
 
-  const propertyNames = useMemo(() => new Map(properties.map((property) => [property.id, property.name])), [properties]);
+  const propertyNames = useMemo(
+    () => new Map(properties.map((property) => [Number(property.id), property.name])),
+    [properties],
+  );
   const rows = useMemo(() => requests.map((request) => mapMaintenanceRequest(request, propertyNames)), [propertyNames, requests]);
 
   const loadRequests = () => {
     setLoading(true);
     api.get('/maintenance')
       .then((data) => {
-        if (Array.isArray(data)) {
-          setRequests(data);
-          setUsingSampleData(false);
-        }
+        if (Array.isArray(data)) setRequests(data);
       })
       .catch(() => {
-        setRequests(adminTables.maintenance);
-        setUsingSampleData(true);
+        setRequests([]);
       })
       .finally(() => setLoading(false));
   };
@@ -166,8 +169,8 @@ export default function AdminMaintenance() {
       priority: form.priority,
       status: form.status,
       assigned_to: form.assigned_to.trim() || undefined,
-      scheduled_at: form.scheduled_at || undefined,
-      completed_at: form.completed_at || undefined,
+      scheduled_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : undefined,
+      completed_at: form.completed_at ? new Date(form.completed_at).toISOString() : undefined,
       cost: Number(form.cost) || 0,
     };
 
@@ -222,11 +225,6 @@ export default function AdminMaintenance() {
       {message && (
         <p className="rounded-2xl bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-primary dark:bg-brand-800/40 dark:text-brand-accent">
           {message}
-        </p>
-      )}
-      {usingSampleData && (
-        <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-          Showing sample work orders because live maintenance data is unavailable. Create, edit, and delete actions need API data with database IDs.
         </p>
       )}
       {showForm && (
@@ -366,8 +364,15 @@ export default function AdminMaintenance() {
               <tr>{['Ticket', 'Property', 'Issue', 'Priority', 'Assignee', 'Schedule', 'Status', 'Actions'].map((head) => <th key={head} className="px-5 py-3">{head}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-brand-100 dark:divide-brand-700/50">
-              {rows.map((row) => (
-                <tr key={row.id || row.ticket} className="hover:bg-brand-50/70 dark:hover:bg-brand-800/30">
+              {loading && (
+                <tr>
+                  <td className="px-5 py-8 text-center text-brand-text-muted dark:text-slate-400" colSpan={8}>
+                    Loading work orders...
+                  </td>
+                </tr>
+              )}
+              {!loading && rows.map((row) => (
+                <tr key={row.id} className="hover:bg-brand-50/70 dark:hover:bg-brand-800/30">
                   <td className="px-5 py-4 font-mono text-xs text-brand-text-muted">{row.ticket}</td>
                   <td className="px-5 py-4 font-semibold text-brand-primary dark:text-white">{row.property}</td>
                   <td className="px-5 py-4">{row.issue}</td>
@@ -410,9 +415,6 @@ export default function AdminMaintenance() {
               )}
             </tbody>
           </table>
-          {loading && (
-            <p className="px-5 py-4 text-sm text-brand-text-muted dark:text-slate-400">Loading work orders...</p>
-          )}
         </div>
       </div>
     </div>

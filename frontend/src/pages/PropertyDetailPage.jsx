@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Bath, BedDouble, CalendarDays, Download, Expand, MapPin, MessageCircle, Ruler, X } from 'lucide-react';
-import { properties } from '../data/properties.js';
-import { useProperty } from '../hooks/useProperties.js';
+import { useProperty, useProperties } from '../hooks/useProperties.js';
 
 const PropertyDetailPage = () => {
   const { slug } = useParams();
   const { property, loading } = useProperty(slug);
+  const { properties } = useProperties();
   const [activeImage, setActiveImage] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
 
